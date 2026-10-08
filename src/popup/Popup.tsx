@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { formatDuration, formatRelative, pluralize } from '../shared/format';
 import { sendToBackground } from '../shared/messages';
 import { Toggle } from '../ui/components';
@@ -11,7 +10,6 @@ export function Popup() {
   const [settings, updateSettings] = useSettings();
   const [sessions] = useSessions();
   const recent = sessions?.slice(0, 3) ?? [];
-  const shortcut = useToggleShortcut();
 
   const openSidePanel = async () => {
     if (tabId === null) return;
@@ -37,19 +35,6 @@ export function Popup() {
             {pluralize(state.session.entryCount, 'caption')} · {formatDuration(state.session.startedAt, null)}
           </p>
         )}
-        <p className="mt-2 text-[11px] text-muted">
-          {shortcut ? (
-            <>
-              Toggle with <kbd className="rounded border border-line bg-panel-2 px-1 py-0.5 font-mono">{shortcut}</kbd>
-            </>
-          ) : (
-            'No keyboard shortcut set'
-          )}
-          {' · '}
-          <button className="hover:text-fg" onClick={() => void chrome.tabs.create({ url: 'chrome://extensions/shortcuts' })}>
-            change
-          </button>
-        </p>
       </section>
 
       <section className="card p-3">
@@ -97,16 +82,4 @@ export function Popup() {
       )}
     </div>
   );
-}
-
-/** The key currently bound to the toggle-recording command, formatted for display. */
-function useToggleShortcut(): string | null {
-  const [shortcut, setShortcut] = useState<string | null>(null);
-  useEffect(() => {
-    void chrome.commands.getAll().then((commands) => {
-      const key = commands.find((c) => c.name === 'toggle-recording')?.shortcut;
-      setShortcut(key ? key.replace(/\+/g, ' + ') : null);
-    });
-  }, []);
-  return shortcut;
 }
