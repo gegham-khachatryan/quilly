@@ -45,7 +45,7 @@ export function EditableTitle({ value, onSave, className = '' }: { value: string
             }
           }}
         />
-        <button type="submit" className="btn-ghost shrink-0 px-2 py-1.5" title="Save" onMouseDown={(e) => e.preventDefault()}>
+        <button type="submit" className="btn-ghost btn-icon shrink-0" title="Save" onMouseDown={(e) => e.preventDefault()}>
           <CheckIcon size={16} />
         </button>
       </form>

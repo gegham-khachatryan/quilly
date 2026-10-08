@@ -98,7 +98,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   { label: 'JSON', hint: '.json', icon: <CodeIcon size={15} />, onSelect: () => exportAs('json') },
                 ]}
               />
-              <button className="btn-ghost px-2 text-muted hover:text-rec" onClick={() => void remove()} title="Delete session">
+              <button className="btn-ghost btn-icon text-muted hover:text-rec" onClick={() => void remove()} title="Delete session">
                 <TrashIcon size={15} />
               </button>
             </div>
