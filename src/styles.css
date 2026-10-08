@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #0f1117;
+  --color-panel: #171a22;
+  --color-panel-2: #1f232d;
+  --color-line: #2a2f3b;
+  --color-fg: #e6e8ee;
+  --color-muted: #8b93a7;
+  --color-accent: #6ea8fe;
+  --color-rec: #ef4444;
+}
+
+html, body, #root { height: 100%; }
+body { @apply bg-bg text-fg antialiased; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors
+    disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60;
+}
+@utility btn-primary { @apply btn bg-accent text-black hover:bg-accent/90; }
+@utility btn-danger { @apply btn bg-rec text-white hover:bg-rec/90; }
+@utility btn-ghost { @apply btn bg-panel-2 text-fg hover:bg-line; }
+@utility input {
+  @apply w-full rounded-md border border-line bg-panel-2 px-3 py-2 text-sm text-fg placeholder:text-muted
+    focus:border-accent focus:outline-none;
+}
+@utility card { @apply rounded-lg border border-line bg-panel; }
+
+.rec-dot { @apply inline-block h-2.5 w-2.5 rounded-full bg-rec; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+
+.prose-chat p { margin: 0 0 .5rem; }
+.prose-chat ul, .prose-chat ol { margin: 0 0 .5rem 1.25rem; }
+.prose-chat ul { list-style: disc; }
+.prose-chat ol { list-style: decimal; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 600; margin: .75rem 0 .35rem; }
+.prose-chat code { @apply rounded bg-panel-2 px-1 py-0.5 text-[0.85em]; }
+.prose-chat pre { @apply my-2 overflow-x-auto rounded-md bg-panel-2 p-3 text-xs; }
+.prose-chat pre code { background: transparent; padding: 0; }
