@@ -64,12 +64,23 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
             ←
           </button>
         )}
-        <button className="min-w-0 flex-1 truncate text-left font-medium hover:underline" onClick={() => openAppPage(`#/sessions/${session.id}`)} title="Open session">
-          {session.title}
-        </button>
-        <span className="shrink-0 text-muted" title={formatDateTime(session.startedAt)}>
-          {entries.length} captions · {formatDuration(session.startedAt, session.endedAt)}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{session.title}</span>
+          <span className="block text-muted" title={formatDateTime(session.startedAt)}>
+            {entries.length} captions · {formatDuration(session.startedAt, session.endedAt)}
+          </span>
         </span>
+        <button
+          className="btn-ghost shrink-0 gap-1 px-2 py-1 text-xs"
+          onClick={() => openAppPage(`#/sessions/${session.id}`)}
+          title="Open session page: export, search, AI"
+        >
+          Open
+          <svg className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+          </svg>
+        </button>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3">
         <TranscriptList entries={entries} startedAt={session.startedAt} compact />
