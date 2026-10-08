@@ -230,7 +230,6 @@ const iconPaths = (prefix: 'icon' | 'rec') => Object.fromEntries(ICON_SIZES.map(
 async function setRecordingIndicator(tabId: number, recording: boolean): Promise<void> {
   await Promise.all([
     chrome.action.setIcon({ tabId, path: iconPaths(recording ? 'rec' : 'icon') }),
-    chrome.action.setBadgeText({ tabId, text: recording ? 'REC' : '' }),
-    recording ? chrome.action.setBadgeBackgroundColor({ tabId, color: '#ef4444' }) : Promise.resolve(),
+    chrome.action.setBadgeText({ tabId, text: '' }), // the icon alone signals recording; also clears any flashBadge leftovers
   ]);
 }
