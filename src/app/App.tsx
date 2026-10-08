@@ -1,5 +1,5 @@
 import { useSession } from '../ui/hooks';
-import { SettingsIcon } from '../ui/icons';
+import { ArrowLeftIcon, ListIcon, SettingsIcon } from '../ui/icons';
 import { navigate, useRoute } from './router';
 import { SessionDetailPage } from './pages/SessionDetailPage';
 import { SessionsPage } from './pages/SessionsPage';
@@ -15,29 +15,27 @@ export function App() {
         <button className="flex items-center gap-2 text-sm font-semibold" onClick={() => navigate('#/sessions')}>
           <img src="/logo.svg" alt="" className="h-5 w-5" /> Meet Hunter
         </button>
-        <span className="h-4 w-px bg-line" aria-hidden />
-        <ol className="flex min-w-0 items-center gap-1.5 text-sm">
-          {route.name === 'settings' ? (
-            <Crumb active>Settings</Crumb>
-          ) : (
-            <Crumb active={route.name === 'sessions'} onClick={() => navigate('#/sessions')}>
-              Sessions
-            </Crumb>
-          )}
-          {route.name === 'session' && (
-            <>
-              <Separator />
-              <Crumb active>{session?.title ?? '…'}</Crumb>
-            </>
-          )}
-        </ol>
-        <button
-          className={`btn-ghost ml-auto gap-1.5 px-2.5 ${route.name === 'settings' ? 'bg-line' : 'text-muted'}`}
-          onClick={() => navigate('#/settings')}
-          title="Settings"
-        >
-          <SettingsIcon size={16} /> Settings
-        </button>
+
+        {route.name === 'session' && (
+          <>
+            <span className="h-4 w-px bg-line" aria-hidden />
+            <button className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted transition-colors hover:text-fg" onClick={() => navigate('#/sessions')} title="Back to sessions">
+              <ArrowLeftIcon size={15} />
+              <span className="shrink-0">Back</span>
+              <span className="text-muted/60">/</span>
+              <span className="truncate text-fg">{session?.title ?? '…'}</span>
+            </button>
+          </>
+        )}
+
+        <div className="ml-auto flex items-center gap-1">
+          <NavButton active={route.name === 'sessions' || route.name === 'session'} onClick={() => navigate('#/sessions')} icon={<ListIcon size={16} />}>
+            Sessions
+          </NavButton>
+          <NavButton active={route.name === 'settings'} onClick={() => navigate('#/settings')} icon={<SettingsIcon size={16} />}>
+            Settings
+          </NavButton>
+        </div>
       </nav>
       <main className="min-h-0 flex-1">
         {route.name === 'sessions' && <SessionsPage />}
@@ -48,21 +46,10 @@ export function App() {
   );
 }
 
-function Crumb({ active, onClick, children }: { active: boolean; onClick?: () => void; children: string }) {
-  if (!onClick) return <li className={`truncate ${active ? 'text-fg' : 'text-muted'}`}>{children}</li>;
+function NavButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: string }) {
   return (
-    <li className="shrink-0">
-      <button onClick={onClick} className={`rounded px-1 transition-colors hover:text-fg ${active ? 'text-fg' : 'text-muted'}`}>
-        {children}
-      </button>
-    </li>
-  );
-}
-
-function Separator() {
-  return (
-    <li className="text-muted/60" aria-hidden>
-      /
-    </li>
+    <button className={`btn-ghost gap-1.5 px-2.5 ${active ? 'bg-line text-fg' : 'bg-transparent text-muted hover:bg-panel-2'}`} onClick={onClick}>
+      {icon} {children}
+    </button>
   );
 }
