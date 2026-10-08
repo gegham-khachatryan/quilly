@@ -4,6 +4,8 @@ const KEY = 'settings';
 
 export const DEFAULT_SETTINGS: Settings = {
   autoStart: true,
+  keepAliveInBackground: true,
+  hideCaptionsOverlay: false,
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
 };

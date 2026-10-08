@@ -54,6 +54,31 @@ export function ensureCaptionsOn(): CaptionsStatus {
   return status;
 }
 
+const OVERLAY_STYLE_ID = 'meet-hunter-hide-captions';
+
+/**
+ * Visually hides Meet's caption overlay without removing it from layout, so the
+ * DOM keeps updating and capture continues. `display: none` would be risky here.
+ */
+export function setCaptionsOverlayHidden(hidden: boolean): void {
+  const existing = document.getElementById(OVERLAY_STYLE_ID);
+  if (!hidden) {
+    existing?.remove();
+    return;
+  }
+  if (existing) return;
+  const style = document.createElement('style');
+  style.id = OVERLAY_STYLE_ID;
+  style.textContent = `${CAPTION_CONTAINER_SELECTORS.join(', ')} { opacity: 0 !important; pointer-events: none !important; }`;
+  document.documentElement.appendChild(style);
+}
+
+/** Flag read by keepalive.js (main world) to decide whether to spoof visibility. */
+export function setKeepAlive(enabled: boolean): void {
+  if (enabled) document.documentElement.dataset.meetHunterKeepalive = '1';
+  else delete document.documentElement.dataset.meetHunterKeepalive;
+}
+
 export function getCaptionsContainer(): HTMLElement | null {
   for (const selector of CAPTION_CONTAINER_SELECTORS) {
     const el = document.querySelector<HTMLElement>(selector);

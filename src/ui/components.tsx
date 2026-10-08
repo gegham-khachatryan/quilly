@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { formatClock, formatTime } from '../shared/format';
 import type { Session, TranscriptEntry } from '../shared/types';
 
@@ -42,14 +42,14 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 }
 
 const SPEAKER_PALETTE = [
-  { text: 'text-sky-300', bg: 'bg-sky-500/20', ring: 'ring-sky-400/40' },
-  { text: 'text-emerald-300', bg: 'bg-emerald-500/20', ring: 'ring-emerald-400/40' },
-  { text: 'text-amber-300', bg: 'bg-amber-500/20', ring: 'ring-amber-400/40' },
-  { text: 'text-fuchsia-300', bg: 'bg-fuchsia-500/20', ring: 'ring-fuchsia-400/40' },
-  { text: 'text-rose-300', bg: 'bg-rose-500/20', ring: 'ring-rose-400/40' },
-  { text: 'text-lime-300', bg: 'bg-lime-500/20', ring: 'ring-lime-400/40' },
-  { text: 'text-violet-300', bg: 'bg-violet-500/20', ring: 'ring-violet-400/40' },
-  { text: 'text-cyan-300', bg: 'bg-cyan-500/20', ring: 'ring-cyan-400/40' },
+  { text: 'text-sky-300', bg: 'bg-sky-950', ring: 'ring-sky-700' },
+  { text: 'text-emerald-300', bg: 'bg-emerald-950', ring: 'ring-emerald-700' },
+  { text: 'text-amber-300', bg: 'bg-amber-950', ring: 'ring-amber-700' },
+  { text: 'text-fuchsia-300', bg: 'bg-fuchsia-950', ring: 'ring-fuchsia-700' },
+  { text: 'text-rose-300', bg: 'bg-rose-950', ring: 'ring-rose-700' },
+  { text: 'text-lime-300', bg: 'bg-lime-950', ring: 'ring-lime-700' },
+  { text: 'text-violet-300', bg: 'bg-violet-950', ring: 'ring-violet-700' },
+  { text: 'text-cyan-300', bg: 'bg-cyan-950', ring: 'ring-cyan-700' },
 ];
 
 export function speakerStyle(name: string) {
@@ -163,4 +163,84 @@ function Highlighted({ text, query }: { text: string; query?: string }) {
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Two avatars + "+N" summary; the full list is in the tooltip and in a popover when onSelect is given. */
+export function ParticipantsStack({
+  names,
+  shown = 2,
+  selected,
+  onSelect,
+}: {
+  names: string[];
+  shown?: number;
+  selected?: string | null;
+  onSelect?: (name: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
+  if (names.length === 0) return null;
+  const rest = names.length - shown;
+  const selectedName = selected && names.find((n) => n.toLowerCase() === selected.toLowerCase());
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        className={`inline-flex items-center gap-2 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs transition-colors hover:border-accent/50 ${
+          selectedName ? 'border-accent bg-accent/10' : 'border-line bg-panel-2/60'
+        }`}
+        title={names.join(', ')}
+        onClick={() => (onSelect ? setOpen((v) => !v) : undefined)}
+      >
+        <span className="flex -space-x-1.5">
+          {(selectedName ? [selectedName] : names.slice(0, shown)).map((name) => (
+            <span key={name} className="rounded-full ring-2 ring-panel">
+              <Avatar name={name} size="sm" />
+            </span>
+          ))}
+        </span>
+        <span className="text-muted">
+          {selectedName ? <span className="text-fg">{selectedName}</span> : rest > 0 ? `+${rest}` : names.length === 1 ? names[0] : `${names.length}`}
+        </span>
+      </button>
+      {open && onSelect && (
+        <div className="absolute right-0 z-20 mt-1 min-w-52 overflow-hidden rounded-md border border-line bg-panel p-1 shadow-2xl">
+          <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Filter by speaker</p>
+          {names.map((name) => {
+            const active = selectedName === name;
+            return (
+              <button
+                key={name}
+                type="button"
+                className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-panel-2 ${active ? 'text-accent' : ''}`}
+                onClick={() => {
+                  onSelect(active ? null : name);
+                  setOpen(false);
+                }}
+              >
+                <Avatar name={name} size="sm" />
+                <span className="flex-1 truncate">{name}</span>
+                {active && <span className="text-[11px]">on</span>}
+              </button>
+            );
+          })}
+          {selectedName && (
+            <button type="button" className="mt-1 w-full rounded px-2 py-1.5 text-left text-xs text-muted hover:bg-panel-2" onClick={() => { onSelect(null); setOpen(false); }}>
+              Clear filter
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

@@ -1,7 +1,8 @@
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
-import type { MeetState } from '../shared/types';
+import { getSettings, onSettingsChange } from '../shared/settings';
+import type { MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
-import { ensureCaptionsOn, getMeetingCode, getMeetingTitle, isInCall } from './meetDom';
+import { ensureCaptionsOn, getMeetingCode, getMeetingTitle, isInCall, setCaptionsOverlayHidden, setKeepAlive } from './meetDom';
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
@@ -12,8 +13,11 @@ class MeetController {
   });
   private lastReported: string | null = null;
   private captionsEnforcer: number | null = null;
+  private settings: Settings | null = null;
 
   start(): void {
+    void getSettings().then((s) => this.applySettings(s));
+    onSettingsChange((s) => this.applySettings(s));
     chrome.runtime.onMessage.addListener((message: BackgroundToContentMessage, _sender, sendResponse) => {
       try {
         sendResponse(this.handle(message));
@@ -66,6 +70,7 @@ class MeetController {
     this.captions.start();
     ensureCaptionsOn();
     this.captionsEnforcer = window.setInterval(() => ensureCaptionsOn(), CAPTIONS_ENFORCE_MS);
+    this.applyCaptureEffects();
     this.lastReported = null;
   }
 
@@ -73,7 +78,20 @@ class MeetController {
     this.captions.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
     this.captionsEnforcer = null;
+    this.applyCaptureEffects();
     this.lastReported = null;
+  }
+
+  private applySettings(settings: Settings): void {
+    this.settings = settings;
+    this.applyCaptureEffects();
+  }
+
+  /** Visibility shim and overlay hiding are only active while capturing. */
+  private applyCaptureEffects(): void {
+    const capturing = this.captions.isRunning;
+    setKeepAlive(capturing && (this.settings?.keepAliveInBackground ?? true));
+    setCaptionsOverlayHidden(capturing && (this.settings?.hideCaptionsOverlay ?? false));
   }
 }
 

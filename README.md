@@ -6,6 +6,9 @@ export transcripts or iterate on them with AI through OpenRouter.
 ## What it does
 
 - **Auto-capture.** When you join a Meet call it turns on Meet's native captions (CC) and records
+- **Background tabs.** Meet pauses caption rendering when its tab is hidden. While recording, a
+  main-world shim (`keepalive.js`) reports the tab as visible so captions keep flowing. Can be turned
+  off in Settings. Optionally the caption overlay can be hidden while still being captured.
 - **Keyboard shortcut.** `Alt+Shift+R` toggles recording on the current Meet tab (change it at `chrome://extensions/shortcuts`).
   every caption line with speaker and timestamp. Auto-start can be toggled off; you can also
   start/stop manually from the popup or side panel.

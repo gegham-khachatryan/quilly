@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
 import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
 import { downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
-import { Avatar, Empty, StatusBadge, TranscriptList } from '../../ui/components';
+import { Empty, ParticipantsStack, StatusBadge, TranscriptList } from '../../ui/components';
 import { EditableTitle } from '../../ui/EditableTitle';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';
 import { CheckIcon, CodeIcon, CopyIcon, DownloadIcon, FileTextIcon, MarkdownIcon, SearchIcon, TrashIcon } from '../../ui/icons';
@@ -112,23 +112,11 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   <span className="rec-dot" /> Live
                 </span>
               )}
-              {session.speakers.length > 0 && (
-                <div className="flex flex-wrap items-center justify-end gap-1.5">
-                  {session.speakers.map((name) => (
-                    <button
-                      key={name}
-                      className={`inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs transition-colors hover:border-accent/50 ${
-                        query.trim().toLowerCase() === name.toLowerCase() ? 'border-accent bg-accent/10' : 'border-line bg-panel-2/60'
-                      }`}
-                      onClick={() => setQuery((q) => (q.trim().toLowerCase() === name.toLowerCase() ? '' : name))}
-                      title={`Filter by ${name}`}
-                    >
-                      <Avatar name={name} size="sm" />
-                      {name}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <ParticipantsStack
+                names={session.speakers}
+                selected={session.speakers.find((n) => n.toLowerCase() === query.trim().toLowerCase()) ?? null}
+                onSelect={(name) => setQuery(name ?? '')}
+              />
             </div>
           </div>
         </div>

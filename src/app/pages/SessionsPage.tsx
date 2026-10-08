@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
 import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
-import { Avatar, Empty, StatusBadge } from '../../ui/components';
+import { Empty, ParticipantsStack, StatusBadge } from '../../ui/components';
 import { useSessions } from '../../ui/hooks';
 import { SearchIcon, TrashIcon } from '../../ui/icons';
 import { navigate } from '../router';
@@ -69,15 +69,8 @@ export function SessionsPage() {
                       </div>
                     </div>
                     {s.speakers.length > 0 && (
-                      <div className="hidden items-center sm:flex" title={s.speakers.join(', ')}>
-                        <div className="flex -space-x-1.5">
-                          {s.speakers.slice(0, 4).map((name) => (
-                            <span key={name} className="rounded-full ring-2 ring-panel">
-                              <Avatar name={name} size="sm" />
-                            </span>
-                          ))}
-                        </div>
-                        {s.speakers.length > 4 && <span className="ml-1.5 text-[11px] text-muted">+{s.speakers.length - 4}</span>}
+                      <div className="hidden sm:block" onClick={(e) => e.stopPropagation()}>
+                        <ParticipantsStack names={s.speakers} />
                       </div>
                     )}
                     <button

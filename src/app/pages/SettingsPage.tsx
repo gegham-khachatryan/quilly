@@ -29,6 +29,18 @@ export function SettingsPage() {
           checked={settings.autoStart}
           onChange={(v) => void update({ autoStart: v })}
         />
+        <Toggle
+          label="Keep capturing in background tabs"
+          hint="Meet pauses captions when its tab is hidden. While recording, make Meet believe the tab is visible so captions keep flowing."
+          checked={settings.keepAliveInBackground}
+          onChange={(v) => void update({ keepAliveInBackground: v })}
+        />
+        <Toggle
+          label="Hide caption overlay while recording"
+          hint="Captions stay on (they are the transcript source) but are made invisible in the Meet window."
+          checked={settings.hideCaptionsOverlay}
+          onChange={(v) => void update({ hideCaptionsOverlay: v })}
+        />
       </section>
 
       <section className="card space-y-4 p-4">

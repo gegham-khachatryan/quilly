@@ -37,6 +37,10 @@ export interface ChatMessage {
 
 export interface Settings {
   autoStart: boolean;
+  /** Keep Meet rendering captions while the tab is in the background (visibility shim). */
+  keepAliveInBackground: boolean;
+  /** Capture captions but keep Meet's caption overlay invisible. */
+  hideCaptionsOverlay: boolean;
   openRouterApiKey: string;
   model: string;
 }
