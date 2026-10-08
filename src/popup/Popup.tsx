@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatDuration } from '../shared/format';
+import { formatDuration, formatRelative } from '../shared/format';
 import { sendToBackground } from '../shared/messages';
 import { Toggle } from '../ui/components';
 import { openAppPage, useCurrentTabId, useSessions, useSettings, useTabState } from '../ui/hooks';
@@ -82,7 +82,10 @@ export function Popup() {
                   className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-panel-2"
                   onClick={() => openAppPage(`#/sessions/${s.id}`)}
                 >
-                  <span className="truncate text-xs">{s.title}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs">{s.title}</span>
+                    <span className="block text-[11px] text-muted">{formatRelative(s.startedAt)}</span>
+                  </span>
                   <span className="shrink-0 text-[11px] text-muted">
                     {s.status === 'recording' ? <span className="text-rec">● live</span> : formatDuration(s.startedAt, s.endedAt)}
                   </span>

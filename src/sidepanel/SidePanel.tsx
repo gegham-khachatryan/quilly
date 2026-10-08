@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatDateTime, formatDuration } from '../shared/format';
+import { formatDateTime, formatDuration, formatRelative } from '../shared/format';
 import type { Session } from '../shared/types';
 import { Empty, StatusBadge, TranscriptList } from '../ui/components';
 import { openAppPage, useCurrentTabId, useEntries, useSessions, useStickToBottom, useTabState } from '../ui/hooks';
@@ -67,8 +67,8 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
         <button className="min-w-0 flex-1 truncate text-left font-medium hover:underline" onClick={() => openAppPage(`#/sessions/${session.id}`)} title="Open session">
           {session.title}
         </button>
-        <span className="shrink-0 text-muted">
-          {entries.length} · {formatDuration(session.startedAt, session.endedAt)}
+        <span className="shrink-0 text-muted" title={formatDateTime(session.startedAt)}>
+          {entries.length} captions · {formatDuration(session.startedAt, session.endedAt)}
         </span>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3">
@@ -99,7 +99,8 @@ function RecentSessions({ sessions, onSelect }: { sessions: Session[] | null; on
                 {s.status === 'recording' && <StatusBadge session={s} />}
               </span>
               <span className="flex flex-wrap gap-x-2 text-[11px] text-muted">
-                <span>{formatDateTime(s.startedAt)}</span>
+                <span>{formatRelative(s.startedAt)}</span>
+                <span>·</span>
                 <span>{formatDuration(s.startedAt, s.endedAt)}</span>
                 <span>{s.entryCount} captions</span>
               </span>
