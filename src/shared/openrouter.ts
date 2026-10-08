@@ -2,9 +2,21 @@ const BASE = 'https://openrouter.ai/api/v1';
 
 export interface OpenRouterModel {
   id: string;
+  /** Human-friendly model name without the provider prefix, e.g. "Claude Sonnet 4.5". */
   name: string;
+  providerSlug: string;
+  /** Provider display name as OpenRouter labels it, e.g. "Anthropic". */
+  providerName: string;
   context_length: number | null;
   pricing: { prompt: string; completion: string };
+}
+
+interface RawModel {
+  id: string;
+  name: string;
+  context_length?: number | null;
+  pricing: { prompt: string; completion: string };
+  architecture?: { output_modalities?: string[] };
 }
 
 export interface ChatTurn {
@@ -20,10 +32,17 @@ const appHeaders = {
 export async function listModels(signal?: AbortSignal): Promise<OpenRouterModel[]> {
   const res = await fetch(`${BASE}/models`, { headers: appHeaders, signal });
   if (!res.ok) throw new Error(`OpenRouter models request failed (${res.status})`);
-  const json = (await res.json()) as { data: OpenRouterModel[] };
+  const json = (await res.json()) as { data: RawModel[] };
   return json.data
-    .map((m) => ({ id: m.id, name: m.name, context_length: m.context_length ?? null, pricing: m.pricing }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+    .filter((m) => m.architecture?.output_modalities?.includes('text') ?? true)
+    .map((m): OpenRouterModel => {
+      const providerSlug = (m.id.split('/')[0] ?? '').replace(/^~/, '').toLowerCase();
+      const sep = m.name.indexOf(': ');
+      const providerName = sep > 0 ? m.name.slice(0, sep) : providerSlug;
+      const name = sep > 0 ? m.name.slice(sep + 2) : m.name;
+      return { id: m.id, name, providerSlug, providerName, context_length: m.context_length ?? null, pricing: m.pricing };
+    })
+    .sort((a, b) => a.providerName.localeCompare(b.providerName) || a.name.localeCompare(b.name));
 }
 
 export interface StreamChatOptions {
