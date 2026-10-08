@@ -5,7 +5,7 @@ import { downloadText, exportFilename, renderExport, transcriptToText, type Expo
 import { Avatar, Empty, StatusBadge, TranscriptList } from '../../ui/components';
 import { EditableTitle } from '../../ui/EditableTitle';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';
-import { ArrowLeftIcon, CheckIcon, CodeIcon, CopyIcon, DownloadIcon, FileTextIcon, MarkdownIcon, SearchIcon, TrashIcon } from '../../ui/icons';
+import { CheckIcon, CodeIcon, CopyIcon, DownloadIcon, FileTextIcon, MarkdownIcon, SearchIcon, TrashIcon } from '../../ui/icons';
 import { Menu } from '../../ui/Menu';
 import { AiPanel } from '../components/AiPanel';
 import { navigate } from '../router';
@@ -56,11 +56,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
       <section className="flex min-h-0 flex-col">
         {/* Header */}
         <header className="border-b border-line bg-panel/60 backdrop-blur">
-          <div className="mx-auto w-full max-w-4xl px-6 pt-4 pb-4">
-            <button className="mb-3 inline-flex items-center gap-1.5 text-xs text-muted transition-colors hover:text-fg" onClick={() => navigate('#/sessions')}>
-              <ArrowLeftIcon size={14} /> All sessions
-            </button>
-
+          <div className="mx-auto w-full max-w-4xl px-6 py-4">
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3">
@@ -76,16 +72,6 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   <Dot />
                   <code className="rounded bg-panel-2 px-1.5 py-0.5 font-mono text-[11px] text-fg/80">{session.meetingCode}</code>
                 </div>
-                {session.speakers.length > 0 && (
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {session.speakers.map((name) => (
-                      <span key={name} className="inline-flex items-center gap-1.5 rounded-full border border-line bg-panel-2/60 py-0.5 pr-2.5 pl-0.5 text-xs">
-                        <Avatar name={name} size="sm" />
-                        {name}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
@@ -120,11 +106,30 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                 </span>
               )}
             </label>
-            {live && (
-              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted">
-                <span className="rec-dot" /> Live, updating as people speak
-              </span>
-            )}
+            <div className="ml-auto flex items-center gap-3">
+              {live && (
+                <span className="inline-flex items-center gap-1.5 text-xs text-muted">
+                  <span className="rec-dot" /> Live
+                </span>
+              )}
+              {session.speakers.length > 0 && (
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  {session.speakers.map((name) => (
+                    <button
+                      key={name}
+                      className={`inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs transition-colors hover:border-accent/50 ${
+                        query.trim().toLowerCase() === name.toLowerCase() ? 'border-accent bg-accent/10' : 'border-line bg-panel-2/60'
+                      }`}
+                      onClick={() => setQuery((q) => (q.trim().toLowerCase() === name.toLowerCase() ? '' : name))}
+                      title={`Filter by ${name}`}
+                    >
+                      <Avatar name={name} size="sm" />
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
