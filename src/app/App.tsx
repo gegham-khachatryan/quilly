@@ -17,19 +17,17 @@ export function App() {
         </button>
         <span className="h-4 w-px bg-line" aria-hidden />
         <ol className="flex min-w-0 items-center gap-1.5 text-sm">
-          <Crumb active={route.name === 'sessions'} onClick={() => navigate('#/sessions')}>
-            Sessions
-          </Crumb>
+          {route.name === 'settings' ? (
+            <Crumb active>Settings</Crumb>
+          ) : (
+            <Crumb active={route.name === 'sessions'} onClick={() => navigate('#/sessions')}>
+              Sessions
+            </Crumb>
+          )}
           {route.name === 'session' && (
             <>
               <Separator />
               <Crumb active>{session?.title ?? '…'}</Crumb>
-            </>
-          )}
-          {route.name === 'settings' && (
-            <>
-              <Separator />
-              <Crumb active>Settings</Crumb>
             </>
           )}
         </ol>
