@@ -21,6 +21,7 @@ export class CaptionObserver {
   private container: HTMLElement | null = null;
   private containerPoll: number | null = null;
   private flushTimer: number | null = null;
+  private lastFlushAt = -Infinity;
   private byElement = new WeakMap<Element, TrackedEntry>();
   private lastEntry: TrackedEntry | null = null;
   private running = false;
@@ -39,6 +40,7 @@ export class CaptionObserver {
     if (this.containerPoll !== null) window.clearInterval(this.containerPoll);
     this.containerPoll = null;
     this.lastEntry = null;
+    this.lastFlushAt = -Infinity;
     this.byElement = new WeakMap();
   }
 
@@ -72,16 +74,27 @@ export class CaptionObserver {
     this.flushTimer = null;
   }
 
+  /**
+   * Leading + trailing throttle. The leading flush runs synchronously inside the
+   * MutationObserver callback, so captures never depend on timers, which Chrome
+   * throttles in background tabs. The trailing flush coalesces rapid updates.
+   */
   private scheduleFlush(): void {
+    const now = performance.now();
+    if (now - this.lastFlushAt >= FLUSH_INTERVAL_MS) {
+      this.flush();
+      return;
+    }
     if (this.flushTimer !== null) return;
     this.flushTimer = window.setTimeout(() => {
       this.flushTimer = null;
       this.flush();
-    }, FLUSH_INTERVAL_MS);
+    }, FLUSH_INTERVAL_MS - (now - this.lastFlushAt));
   }
 
   private flush(): void {
     if (!this.container || !this.running) return;
+    this.lastFlushAt = performance.now();
     for (const block of findCaptionBlocks(this.container)) {
       const parsed = parseCaptionBlock(block);
       if (!parsed) continue;
