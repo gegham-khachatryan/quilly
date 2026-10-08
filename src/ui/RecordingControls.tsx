@@ -35,17 +35,20 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
           ? 'In a call. Ready to record.'
           : 'Join the call to start recording.';
 
-  const btn = size === 'sm' ? 'w-full py-1.5 text-xs' : 'w-full py-2.5 text-sm';
+  const btn = size === 'sm' ? 'w-full py-2 text-xs font-semibold' : 'w-full py-3 text-sm font-semibold';
 
   return (
     <div className="space-y-2">
       {recording ? (
-        <button className={`btn-danger ${btn}`} disabled={busy} onClick={() => run('recording/stop')}>
-          <span className="h-2.5 w-2.5 rounded-sm bg-white" /> Stop recording
+        <button className={`btn-stop ${btn}`} disabled={busy} onClick={() => run('recording/stop')}>
+          <span className="rec-dot" /> Stop recording
         </button>
       ) : (
-        <button className={`btn-primary ${btn}`} disabled={busy || !canStart} onClick={() => run('recording/start')}>
-          <span className="h-2.5 w-2.5 rounded-full bg-rec" /> Start recording
+        <button className={`btn-brand ${btn}`} disabled={busy || !canStart} onClick={() => run('recording/start')}>
+          <span className="relative inline-flex h-3 w-3 items-center justify-center rounded-full bg-white/25">
+            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+          </span>
+          Start recording
         </button>
       )}
       <p className="flex items-center gap-1.5 text-xs text-muted">
