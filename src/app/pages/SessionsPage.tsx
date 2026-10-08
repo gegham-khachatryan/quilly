@@ -88,7 +88,7 @@ export function SessionsPage() {
                       }}
                       title="Delete session"
                     >
-                      <TrashIcon size={20} />
+                      <TrashIcon size={22} />
                     </button>
                   </div>
                 </li>

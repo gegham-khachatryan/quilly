@@ -18,10 +18,10 @@ export const PencilIcon = (p: IconProps) => (
 );
 export const TrashIcon = (p: IconProps) => (
   <Icon {...p}>
-    <path d="M3 6h18" />
-    <path d="M8 6V4h8v2" />
-    <path d="M19 6l-1 14H6L5 6" />
-    <path d="M10 11v6M14 11v6" />
+    <path d="M2 5.5h20" />
+    <path d="M8.5 5.5V2.5h7v3" />
+    <path d="M19.5 5.5L18.3 21.5H5.7L4.5 5.5" />
+    <path d="M9.5 10v8M14.5 10v8" />
   </Icon>
 );
 export const DownloadIcon = (p: IconProps) => (

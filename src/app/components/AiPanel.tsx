@@ -271,7 +271,7 @@ function PanelHeader({ model, onClear }: { model: string; onClear?: () => void }
         </button>
         {onClear && (
           <button className="btn-ghost btn-icon text-muted hover:bg-rec/15 hover:text-rec" onClick={onClear} title="Clear conversation">
-            <TrashIcon size={18} />
+            <TrashIcon size={20} />
           </button>
         )}
       </div>

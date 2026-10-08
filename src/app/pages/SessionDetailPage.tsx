@@ -87,7 +87,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   ]}
                 />
                 <button className="btn-ghost btn-icon text-muted hover:bg-rec/15 hover:text-rec" onClick={() => void remove()} title="Delete session">
-                  <TrashIcon size={20} />
+                  <TrashIcon size={22} />
                 </button>
               </div>
             </div>
