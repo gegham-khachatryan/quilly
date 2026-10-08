@@ -21,7 +21,7 @@ export function Popup() {
     <div className="w-[340px] space-y-4 p-4">
       <header className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-sm font-semibold">
-          <img src="/icons/icon32.png" alt="" className="h-5 w-5" /> Meet Hunter
+          <img src="/logo.svg" alt="" className="h-5 w-5" /> Meet Hunter
         </h1>
         <button className="text-xs text-muted hover:text-fg" onClick={() => openAppPage('#/settings')}>
           Settings

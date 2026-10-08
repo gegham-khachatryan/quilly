@@ -36,7 +36,7 @@ export function SidePanel() {
       <header className="space-y-2 border-b border-line p-3">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-sm font-semibold">
-            <img src="/icons/icon32.png" alt="" className="h-4 w-4" /> Live transcript
+            <img src="/logo.svg" alt="" className="h-4 w-4" /> Live transcript
           </h1>
           <button className="text-xs text-muted hover:text-fg" onClick={() => openAppPage('#/sessions')}>
             All sessions

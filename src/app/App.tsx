@@ -9,7 +9,7 @@ export function App() {
     <div className="flex h-full flex-col">
       <nav className="flex items-center gap-1 border-b border-line bg-panel px-4 py-2">
         <span className="mr-4 flex items-center gap-2 text-sm font-semibold">
-          <img src="/icons/icon32.png" alt="" className="h-5 w-5" /> Meet Hunter
+          <img src="/logo.svg" alt="" className="h-5 w-5" /> Meet Hunter
         </span>
         <NavLink active={route.name !== 'settings'} onClick={() => navigate('#/sessions')}>
           Sessions

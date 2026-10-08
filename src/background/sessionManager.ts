@@ -58,7 +58,7 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
   await sessionsRepo.put(session);
   await writeActive({ ...(await readActive()), [tabId]: session.id });
   await sendToTab(tabId, { type: 'capture/start', sessionId: session.id });
-  await setBadge(tabId, true);
+  await setRecordingIndicator(tabId, true);
   broadcast({ type: 'sessions/changed', sessionId: session.id });
   return session;
 }
@@ -71,7 +71,7 @@ export async function stopRecording(tabId: number): Promise<Session | null> {
   delete active[tabId];
   await writeActive(active);
   await sendToTab(tabId, { type: 'capture/stop' }).catch(() => undefined);
-  await setBadge(tabId, false).catch(() => undefined);
+  await setRecordingIndicator(tabId, false).catch(() => undefined);
   return finalizeSession(sessionId);
 }
 
@@ -143,7 +143,7 @@ export async function handleMeetState(tabId: number, state: MeetState): Promise<
       await sessionsRepo.put({ ...active, title: state.title });
       broadcast({ type: 'sessions/changed', sessionId: active.id });
     }
-    await setBadge(tabId, true);
+    await setRecordingIndicator(tabId, true);
     return;
   }
 
@@ -174,7 +174,14 @@ export async function reconcile(): Promise<void> {
   }
 }
 
-async function setBadge(tabId: number, recording: boolean): Promise<void> {
-  await chrome.action.setBadgeText({ tabId, text: recording ? 'REC' : '' });
-  if (recording) await chrome.action.setBadgeBackgroundColor({ tabId, color: '#ef4444' });
+const ICON_SIZES = [16, 32, 48, 128] as const;
+const iconPaths = (prefix: 'icon' | 'rec') => Object.fromEntries(ICON_SIZES.map((s) => [s, `icons/${prefix}${s}.png`]));
+
+/** Toolbar shows the brand logo normally and the red record dot while this tab is recording. */
+async function setRecordingIndicator(tabId: number, recording: boolean): Promise<void> {
+  await Promise.all([
+    chrome.action.setIcon({ tabId, path: iconPaths(recording ? 'rec' : 'icon') }),
+    chrome.action.setBadgeText({ tabId, text: recording ? 'REC' : '' }),
+    recording ? chrome.action.setBadgeBackgroundColor({ tabId, color: '#ef4444' }) : Promise.resolve(),
+  ]);
 }
