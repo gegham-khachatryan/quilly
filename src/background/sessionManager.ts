@@ -19,6 +19,28 @@ async function writeActive(map: ActiveMap): Promise<void> {
   await chrome.storage.session.set({ [ACTIVE_KEY]: map });
 }
 
+/**
+ * Tabs where the user stopped recording by hand while still in the call.
+ * Auto-start must not re-arm until that call ends (tab leaves the call or closes).
+ */
+const SUPPRESSED_KEY = 'autoStartSuppressed';
+type SuppressedMap = Record<string, true>;
+
+async function readSuppressed(): Promise<SuppressedMap> {
+  return ((await chrome.storage.session.get(SUPPRESSED_KEY))[SUPPRESSED_KEY] as SuppressedMap | undefined) ?? {};
+}
+
+async function setSuppressed(tabId: number, suppressed: boolean): Promise<void> {
+  const map = await readSuppressed();
+  if (suppressed) map[tabId] = true;
+  else delete map[tabId];
+  await chrome.storage.session.set({ [SUPPRESSED_KEY]: map });
+}
+
+export async function isAutoStartSuppressed(tabId: number): Promise<boolean> {
+  return Boolean((await readSuppressed())[tabId]);
+}
+
 export async function getActiveSession(tabId: number): Promise<Session | null> {
   const sessionId = (await readActive())[tabId];
   if (!sessionId) return null;
@@ -43,6 +65,7 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
   const meet = known ?? (await queryMeetState(tabId));
   if (!meet) throw new Error('This tab is not a Google Meet call (content script unavailable).');
   if (!meet.inCall) throw new Error('Join the meeting first, then start recording.');
+  if (!known) await setSuppressed(tabId, false); // explicit user start re-arms auto-start
 
   const session: Session = {
     id: newId(),
@@ -63,13 +86,18 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
   return session;
 }
 
-export async function stopRecording(tabId: number): Promise<Session | null> {
+/**
+ * @param manual true when the user stopped it (popup, side panel, shortcut):
+ * auto-start then stays off for the remainder of this call.
+ */
+export async function stopRecording(tabId: number, manual = false): Promise<Session | null> {
   const active = await readActive();
   const sessionId = active[tabId];
   if (!sessionId) return null;
 
   delete active[tabId];
   await writeActive(active);
+  if (manual) await setSuppressed(tabId, true);
   await sendToTab(tabId, { type: 'capture/stop' }).catch(() => undefined);
   await setRecordingIndicator(tabId, false).catch(() => undefined);
   return finalizeSession(sessionId);
@@ -147,14 +175,20 @@ export async function handleMeetState(tabId: number, state: MeetState): Promise<
     return;
   }
 
-  if (state.inCall && (await getSettings()).autoStart) {
+  if (!state.inCall) {
+    // Call ended (or page reloaded): the next call in this tab may auto-start again.
+    await setSuppressed(tabId, false);
+    return;
+  }
+
+  if ((await getSettings()).autoStart && !(await isAutoStartSuppressed(tabId))) {
     await startRecording(tabId, state).catch((error) => console.warn('[meet-hunter] auto-start failed', error));
   }
 }
 
 /** Keyboard shortcut / command entry point: stop if recording, otherwise start. */
 export async function toggleRecording(tabId: number): Promise<Session | null> {
-  if (await getActiveSession(tabId)) return stopRecording(tabId);
+  if (await getActiveSession(tabId)) return stopRecording(tabId, true);
   return startRecording(tabId);
 }
 
@@ -168,6 +202,7 @@ export async function flashBadge(tabId: number, text: string, ms = 1500): Promis
 
 export async function handleTabClosed(tabId: number): Promise<void> {
   await stopRecording(tabId);
+  await setSuppressed(tabId, false);
 }
 
 /** Called on service worker start: close sessions whose tabs are gone (crash, restart). */

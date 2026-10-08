@@ -63,4 +63,6 @@ export interface TabRecordingState {
   isMeet: boolean;
   meet: MeetState | null;
   session: Session | null;
+  /** User stopped recording during this call, so auto-start is paused until the call ends. */
+  autoStartSuppressed: boolean;
 }

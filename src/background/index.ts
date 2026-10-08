@@ -1,6 +1,6 @@
 import { errorEnvelope, type ContentMessage, type UiMessage, type UiResponse } from '../shared/messages';
 import type { TabRecordingState } from '../shared/types';
-import { flashBadge, getActiveSession, handleCaption, handleMeetState, handleTabClosed, reconcile, startRecording, stopRecording, toggleRecording } from './sessionManager';
+import { flashBadge, getActiveSession, handleCaption, isAutoStartSuppressed, handleMeetState, handleTabClosed, reconcile, startRecording, stopRecording, toggleRecording } from './sessionManager';
 
 const MEET_ORIGIN = 'https://meet.google.com/';
 
@@ -56,7 +56,7 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
     case 'recording/start':
       return startRecording(message.tabId) satisfies Promise<UiResponse['recording/start']>;
     case 'recording/stop':
-      return stopRecording(message.tabId) satisfies Promise<UiResponse['recording/stop']>;
+      return stopRecording(message.tabId, true) satisfies Promise<UiResponse['recording/stop']>;
     case 'sidepanel/open':
       await chrome.sidePanel.open({ tabId: message.tabId });
       return;
@@ -69,5 +69,5 @@ async function getTabState(tabId: number): Promise<TabRecordingState> {
   const meet = isMeet
     ? await chrome.tabs.sendMessage(tabId, { type: 'meet/getState' }).catch(() => null)
     : null;
-  return { tabId, isMeet, meet, session: await getActiveSession(tabId) };
+  return { tabId, isMeet, meet, session: await getActiveSession(tabId), autoStartSuppressed: await isAutoStartSuppressed(tabId) };
 }

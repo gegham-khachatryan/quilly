@@ -32,7 +32,9 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
       : recording
         ? `Recording ${state.session?.title ?? ''}`
         : state.meet.inCall
-          ? 'In a call. Ready to record.'
+          ? state.autoStartSuppressed
+            ? 'Stopped. Auto-start is paused until this call ends.'
+            : 'In a call. Ready to record.'
           : 'Join the call to start recording.';
 
   const btn = size === 'sm' ? 'w-full py-2 text-xs font-semibold' : 'w-full py-3 text-sm font-semibold';
