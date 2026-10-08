@@ -35,25 +35,23 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
           ? 'In a call. Ready to record.'
           : 'Join the call to start recording.';
 
-  const btn = size === 'sm' ? 'px-2.5 py-1 text-xs' : '';
+  const btn = size === 'sm' ? 'w-full py-1.5 text-xs' : 'w-full py-2.5 text-sm';
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        {recording ? (
-          <button className={`btn-danger ${btn}`} disabled={busy} onClick={() => run('recording/stop')}>
-            <span className="h-2.5 w-2.5 rounded-sm bg-white" /> Stop
-          </button>
-        ) : (
-          <button className={`btn-primary ${btn}`} disabled={busy || !canStart} onClick={() => run('recording/start')}>
-            <span className="h-2.5 w-2.5 rounded-full bg-rec" /> Start recording
-          </button>
-        )}
-        <span className="flex items-center gap-1.5 truncate text-xs text-muted">
-          {recording && <span className="rec-dot" />}
-          {statusText}
-        </span>
-      </div>
+      {recording ? (
+        <button className={`btn-danger ${btn}`} disabled={busy} onClick={() => run('recording/stop')}>
+          <span className="h-2.5 w-2.5 rounded-sm bg-white" /> Stop recording
+        </button>
+      ) : (
+        <button className={`btn-primary ${btn}`} disabled={busy || !canStart} onClick={() => run('recording/start')}>
+          <span className="h-2.5 w-2.5 rounded-full bg-rec" /> Start recording
+        </button>
+      )}
+      <p className="flex items-center gap-1.5 text-xs text-muted">
+        {recording && <span className="rec-dot shrink-0" />}
+        <span className="truncate">{statusText}</span>
+      </p>
       {error && <p className="text-xs text-rec">{error}</p>}
     </div>
   );
