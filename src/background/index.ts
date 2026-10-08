@@ -1,6 +1,6 @@
 import { errorEnvelope, type ContentMessage, type UiMessage, type UiResponse } from '../shared/messages';
 import type { TabRecordingState } from '../shared/types';
-import { getActiveSession, handleCaption, handleMeetState, handleTabClosed, reconcile, startRecording, stopRecording } from './sessionManager';
+import { flashBadge, getActiveSession, handleCaption, handleMeetState, handleTabClosed, reconcile, startRecording, stopRecording, toggleRecording } from './sessionManager';
 
 const MEET_ORIGIN = 'https://meet.google.com/';
 
@@ -21,6 +21,20 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.url && !changeInfo.url.startsWith(MEET_ORIGIN)) void handleTabClosed(tabId);
+});
+
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command !== 'toggle-recording') return;
+  void (async () => {
+    const tabId = tab?.id ?? (await chrome.tabs.query({ active: true, currentWindow: true }))[0]?.id;
+    if (tabId === undefined) return;
+    try {
+      await toggleRecording(tabId);
+    } catch (error) {
+      console.warn('[meet-hunter] toggle-recording ignored:', error);
+      await flashBadge(tabId, '!');
+    }
+  })();
 });
 
 void reconcile();

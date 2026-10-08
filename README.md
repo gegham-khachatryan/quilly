@@ -6,6 +6,7 @@ export transcripts or iterate on them with AI through OpenRouter.
 ## What it does
 
 - **Auto-capture.** When you join a Meet call it turns on Meet's native captions (CC) and records
+- **Keyboard shortcut.** `Alt+Shift+R` toggles recording on the current Meet tab (change it at `chrome://extensions/shortcuts`).
   every caption line with speaker and timestamp. Auto-start can be toggled off; you can also
   start/stop manually from the popup or side panel.
 - **Live side panel.** Chrome side panel showing the transcript as it is spoken.

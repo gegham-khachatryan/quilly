@@ -152,6 +152,20 @@ export async function handleMeetState(tabId: number, state: MeetState): Promise<
   }
 }
 
+/** Keyboard shortcut / command entry point: stop if recording, otherwise start. */
+export async function toggleRecording(tabId: number): Promise<Session | null> {
+  if (await getActiveSession(tabId)) return stopRecording(tabId);
+  return startRecording(tabId);
+}
+
+/** Brief toolbar feedback when a command cannot act on this tab (not a Meet call). */
+export async function flashBadge(tabId: number, text: string, ms = 1500): Promise<void> {
+  await chrome.action.setBadgeBackgroundColor({ tabId, color: '#f59e0b' });
+  await chrome.action.setBadgeText({ tabId, text });
+  await new Promise((r) => setTimeout(r, ms));
+  if (!(await getActiveSession(tabId))) await chrome.action.setBadgeText({ tabId, text: '' });
+}
+
 export async function handleTabClosed(tabId: number): Promise<void> {
   await stopRecording(tabId);
 }
