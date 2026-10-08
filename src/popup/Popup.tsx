@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatDuration, formatRelative } from '../shared/format';
+import { formatDuration, formatRelative, pluralize } from '../shared/format';
 import { sendToBackground } from '../shared/messages';
 import { Toggle } from '../ui/components';
 import { openAppPage, useCurrentTabId, useSessions, useSettings, useTabState } from '../ui/hooks';
@@ -34,7 +34,7 @@ export function Popup() {
         <RecordingControls state={state} onChanged={() => void refresh()} />
         {state?.session && (
           <p className="mt-2 text-xs text-muted">
-            {state.session.entryCount} captions · {formatDuration(state.session.startedAt, null)}
+            {pluralize(state.session.entryCount, 'caption')} · {formatDuration(state.session.startedAt, null)}
           </p>
         )}
         <p className="mt-2 text-[11px] text-muted">

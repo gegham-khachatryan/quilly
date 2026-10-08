@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { formatDateTime, formatDuration, formatRelative } from '../shared/format';
+import { formatDateTime, formatDuration, formatRelative, pluralize } from '../shared/format';
 import type { Session } from '../shared/types';
-import { Empty, StatusBadge, TranscriptList } from '../ui/components';
+import { Empty, TranscriptList } from '../ui/components';
 import { openAppPage, useCurrentTabId, useEntries, useSessions, useStickToBottom, useTabState } from '../ui/hooks';
 import { RecordingControls } from '../ui/RecordingControls';
 
@@ -67,7 +67,7 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{session.title}</span>
           <span className="block text-muted" title={formatDateTime(session.startedAt)}>
-            {entries.length} captions · {formatDuration(session.startedAt, session.endedAt)}
+            {pluralize(entries.length, 'caption')} · {formatDuration(session.startedAt, session.endedAt)}
           </span>
         </span>
         <button
@@ -99,26 +99,35 @@ function RecentSessions({ sessions, onSelect }: { sessions: Session[] | null; on
     );
   }
   return (
-    <div className="flex-1 overflow-y-auto">
-      <p className="px-3 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted">Recent sessions</p>
-      <ul className="divide-y divide-line">
-        {sessions.slice(0, 20).map((s) => (
-          <li key={s.id}>
-            <button className="flex w-full flex-col gap-0.5 px-3 py-2.5 text-left hover:bg-panel-2" onClick={() => onSelect(s.id)}>
-              <span className="flex w-full items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.title}</span>
-                {s.status === 'recording' && <StatusBadge session={s} />}
-              </span>
-              <span className="flex flex-wrap gap-x-2 text-[11px] text-muted">
-                <span>{formatRelative(s.startedAt)}</span>
-                <span>·</span>
-                <span>{formatDuration(s.startedAt, s.endedAt)}</span>
-                <span>{s.entryCount} captions</span>
-              </span>
-              {s.speakers.length > 0 && <span className="w-full truncate text-[11px] text-muted">{s.speakers.join(', ')}</span>}
-            </button>
-          </li>
-        ))}
+    <div className="flex-1 overflow-y-auto p-3">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Recent sessions</p>
+      <ul className="space-y-2">
+        {sessions.slice(0, 20).map((s) => {
+          const live = s.status === 'recording';
+          return (
+            <li key={s.id}>
+              <button
+                className={`card group flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:border-accent/50 hover:bg-panel-2 ${live ? 'border-rec/40' : ''}`}
+                onClick={() => onSelect(s.id)}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    {live && <span className="rec-dot shrink-0" />}
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{s.title}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted">{live ? 'live' : formatDuration(s.startedAt, s.endedAt)}</span>
+                  </span>
+                  <span className="mt-0.5 block truncate text-[11px] text-muted">
+                    {formatRelative(s.startedAt)} · {pluralize(s.entryCount, 'caption')}
+                    {s.speakers.length > 0 && ` · ${s.speakers.join(', ')}`}
+                  </span>
+                </span>
+                <svg className="h-4 w-4 shrink-0 text-muted/50 transition-colors group-hover:text-fg" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.17 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
-import { formatDateTime, formatDuration } from '../../shared/format';
+import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
 import { Empty, StatusBadge } from '../../ui/components';
 import { useSessions } from '../../ui/hooks';
 import { navigate } from '../router';
@@ -45,7 +45,7 @@ export function SessionsPage() {
                 <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted">
                   <span>{formatDateTime(s.startedAt)}</span>
                   <span>{formatDuration(s.startedAt, s.endedAt)}</span>
-                  <span>{s.entryCount} captions</span>
+                  <span>{pluralize(s.entryCount, 'caption')}</span>
                   <span className="font-mono">{s.meetingCode}</span>
                   {s.speakers.length > 0 && <span className="truncate">{s.speakers.join(', ')}</span>}
                 </div>

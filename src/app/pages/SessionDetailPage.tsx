@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
-import { formatDateTime, formatDuration } from '../../shared/format';
+import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
 import { downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
 import { Empty, StatusBadge, TranscriptList } from '../../ui/components';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';
@@ -69,7 +69,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
               <p className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted">
                 <span>{formatDateTime(session.startedAt)}</span>
                 <span>{formatDuration(session.startedAt, session.endedAt)}</span>
-                <span>{entries.length} captions</span>
+                <span>{pluralize(entries.length, 'caption')}</span>
                 <span className="font-mono">{session.meetingCode}</span>
                 {session.speakers.length > 0 && <span>{session.speakers.join(', ')}</span>}
               </p>
