@@ -270,8 +270,8 @@ function PanelHeader({ model, onClear }: { model: string; onClear?: () => void }
           <span className="truncate">{resolved?.name ?? model.split('/').pop()}</span>
         </button>
         {onClear && (
-          <button className="btn-ghost btn-icon h-7 w-7 min-h-7 text-muted hover:text-rec" onClick={onClear} title="Clear conversation">
-            <TrashIcon size={15} />
+          <button className="btn-ghost btn-icon text-muted hover:bg-rec/15 hover:text-rec" onClick={onClear} title="Clear conversation">
+            <TrashIcon size={18} />
           </button>
         )}
       </div>
