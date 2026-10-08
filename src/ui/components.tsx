@@ -41,12 +41,64 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
   );
 }
 
-const SPEAKER_COLORS = ['text-sky-300', 'text-emerald-300', 'text-amber-300', 'text-fuchsia-300', 'text-rose-300', 'text-lime-300', 'text-violet-300', 'text-cyan-300'];
+const SPEAKER_PALETTE = [
+  { text: 'text-sky-300', bg: 'bg-sky-500/20', ring: 'ring-sky-400/40' },
+  { text: 'text-emerald-300', bg: 'bg-emerald-500/20', ring: 'ring-emerald-400/40' },
+  { text: 'text-amber-300', bg: 'bg-amber-500/20', ring: 'ring-amber-400/40' },
+  { text: 'text-fuchsia-300', bg: 'bg-fuchsia-500/20', ring: 'ring-fuchsia-400/40' },
+  { text: 'text-rose-300', bg: 'bg-rose-500/20', ring: 'ring-rose-400/40' },
+  { text: 'text-lime-300', bg: 'bg-lime-500/20', ring: 'ring-lime-400/40' },
+  { text: 'text-violet-300', bg: 'bg-violet-500/20', ring: 'ring-violet-400/40' },
+  { text: 'text-cyan-300', bg: 'bg-cyan-500/20', ring: 'ring-cyan-400/40' },
+];
 
-export function speakerColor(name: string): string {
+export function speakerStyle(name: string) {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return SPEAKER_COLORS[h % SPEAKER_COLORS.length] ?? SPEAKER_COLORS[0]!;
+  return SPEAKER_PALETTE[h % SPEAKER_PALETTE.length]!;
+}
+
+export function speakerColor(name: string): string {
+  return speakerStyle(name).text;
+}
+
+export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+  const style = speakerStyle(name);
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join('');
+  const dims = size === 'sm' ? 'h-6 w-6 text-[10px]' : 'h-8 w-8 text-xs';
+  return (
+    <span className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold ring-1 ${dims} ${style.bg} ${style.text} ${style.ring}`} aria-hidden>
+      {initials || '?'}
+    </span>
+  );
+}
+
+/** Consecutive entries from the same speaker within a short gap are shown as one turn. */
+const GROUP_GAP_MS = 90_000;
+
+interface Turn {
+  speaker: string;
+  startedAt: number;
+  entries: TranscriptEntry[];
+}
+
+function groupTurns(entries: TranscriptEntry[]): Turn[] {
+  const turns: Turn[] = [];
+  for (const entry of entries) {
+    const last = turns.at(-1);
+    const lastEntry = last?.entries.at(-1);
+    if (last && lastEntry && last.speaker === entry.speaker && entry.startedAt - lastEntry.startedAt < GROUP_GAP_MS) {
+      last.entries.push(entry);
+    } else {
+      turns.push({ speaker: entry.speaker, startedAt: entry.startedAt, entries: [entry] });
+    }
+  }
+  return turns;
 }
 
 export function TranscriptList({
@@ -61,24 +113,29 @@ export function TranscriptList({
   highlight?: string;
 }) {
   if (entries.length === 0) return <Empty title="No captions yet">Captions appear here as people speak.</Empty>;
+  const turns = groupTurns(entries);
   return (
-    <ol className={compact ? 'space-y-2' : 'space-y-3'}>
-      {entries.map((entry, i) => {
-        const prev = entries[i - 1];
-        const sameSpeaker = prev?.speaker === entry.speaker;
+    <ol className={compact ? 'space-y-3' : 'space-y-5'}>
+      {turns.map((turn) => {
+        const style = speakerStyle(turn.speaker);
         return (
-          <li key={entry.id} className={sameSpeaker && compact ? 'pl-0' : ''}>
-            {!(sameSpeaker && compact) && (
-              <div className="mb-0.5 flex items-baseline gap-2">
-                <span className={`text-xs font-semibold ${speakerColor(entry.speaker)}`}>{entry.speaker}</span>
-                <span className="text-[11px] text-muted" title={formatTime(entry.startedAt)}>
-                  {formatClock(entry.startedAt - startedAt)}
+          <li key={turn.entries[0]!.id} className="flex gap-3">
+            <Avatar name={turn.speaker} size={compact ? 'sm' : 'md'} />
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-baseline gap-2">
+                <span className={`truncate text-xs font-semibold ${style.text}`}>{turn.speaker}</span>
+                <span className="shrink-0 text-[11px] tabular-nums text-muted" title={formatTime(turn.startedAt)}>
+                  {formatClock(turn.startedAt - startedAt)}
                 </span>
               </div>
-            )}
-            <p className={`${compact ? 'text-[13px]' : 'text-sm'} leading-relaxed text-fg/90`}>
-              <Highlighted text={entry.text} query={highlight} />
-            </p>
+              <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
+                {turn.entries.map((entry) => (
+                  <p key={entry.id} className={`${compact ? 'text-[13px]' : 'text-[15px]'} leading-relaxed text-fg/90`} title={formatClock(entry.startedAt - startedAt)}>
+                    <Highlighted text={entry.text} query={highlight} />
+                  </p>
+                ))}
+              </div>
+            </div>
           </li>
         );
       })}

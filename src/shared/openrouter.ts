@@ -45,6 +45,17 @@ export async function listModels(signal?: AbortSignal): Promise<OpenRouterModel[
     .sort((a, b) => a.providerName.localeCompare(b.providerName) || a.name.localeCompare(b.name));
 }
 
+let modelsCache: Promise<OpenRouterModel[]> | null = null;
+
+/** Memoized model list for the lifetime of the page; a failed load is retried on the next call. */
+export function getModels(): Promise<OpenRouterModel[]> {
+  modelsCache ??= listModels().catch((e: unknown) => {
+    modelsCache = null;
+    throw e;
+  });
+  return modelsCache;
+}
+
 export interface StreamChatOptions {
   apiKey: string;
   model: string;

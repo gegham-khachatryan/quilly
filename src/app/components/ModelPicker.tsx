@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { formatPricePerMillion, listModels, type OpenRouterModel } from '../../shared/openrouter';
+import { formatPricePerMillion, getModels, type OpenRouterModel } from '../../shared/openrouter';
 import { providerMeta } from '../../shared/providers';
 import { ProviderIcon } from './ProviderIcon';
-
-let cache: Promise<OpenRouterModel[]> | null = null;
-const loadModels = () =>
-  (cache ??= listModels().catch((e: unknown) => {
-    cache = null;
-    throw e;
-  }));
 
 interface Group {
   slug: string;
@@ -56,7 +49,7 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadModels().then(setModels, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    getModels().then(setModels, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {
