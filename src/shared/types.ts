@@ -56,6 +56,9 @@ export interface Settings {
   model: string;
 }
 
+/** State of Meet's native captions, which are the transcript source. */
+export type CaptionsStatus = 'on' | 'off' | 'unavailable';
+
 /** What the content script knows about the Meet tab it lives in. */
 export interface MeetState {
   url: string;
@@ -63,6 +66,7 @@ export interface MeetState {
   title: string;
   inCall: boolean;
   capturing: boolean;
+  captions: CaptionsStatus;
 }
 
 /** An entry observed in the Meet DOM; captions are re-sent as their text grows. */

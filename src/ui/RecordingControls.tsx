@@ -39,8 +39,10 @@ export function RecordingControls({
 
   const canStart = Boolean(state?.isMeet && state.meet?.inCall);
   const inOtherTab = recording !== null && recording.tabId !== state?.tabId;
+  const captions = recording && !inOtherTab ? state?.meet?.captions : undefined;
+  const captionsNote = captions === 'off' ? ' · turning on captions…' : captions === 'unavailable' ? ' · captions unavailable in this call' : '';
   const statusText = recording
-    ? `Recording ${recording.session.title}`
+    ? `Recording ${recording.session.title}${captionsNote}`
     : !state?.isMeet
       ? 'Open a Google Meet tab to record.'
       : !state.meet
@@ -48,7 +50,9 @@ export function RecordingControls({
         : state.meet.inCall
           ? state.autoStartSuppressed
             ? 'Stopped. Auto-start is paused until this call ends.'
-            : 'In a call. Ready to record.'
+            : state.meet.captions === 'unavailable'
+              ? 'In a call, but captions are unavailable here.'
+              : 'In a call. Ready to record.'
           : 'Join the call to start recording.';
 
   const btn = size === 'sm' ? 'w-full py-2 text-xs font-semibold' : 'w-full py-3 text-sm font-semibold';

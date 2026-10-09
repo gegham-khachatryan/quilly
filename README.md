@@ -6,8 +6,10 @@ export transcripts or iterate on them with AI through OpenRouter.
 ## What it does
 
 - **Auto-capture.** When you join a Meet call it turns on Meet's native captions (CC) and records
-  every caption line with speaker and timestamp. Auto-start can be toggled off; you can also
-  start/stop manually from the side panel or with the keyboard shortcut.
+  every caption line with speaker and timestamp. Captions it switched on are switched off again when
+  the recording stops. The side panel reports when captions are still being enabled or are
+  unavailable in a call. Auto-start can be toggled off; you can also start/stop manually from the
+  side panel or with the keyboard shortcut.
 - **Hand raises and reactions.** Meet's "Name raised their hand" toasts and floating emoji reactions
   are recorded as events in the transcript, exported alongside captions and visible to the AI.
 - **Live side panel.** The toolbar icon opens a Chrome side panel that streams the transcript as it is

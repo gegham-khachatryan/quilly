@@ -3,7 +3,7 @@ import { getSettings, onSettingsChange } from '../shared/settings';
 import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
 import { MeetEventObserver } from './eventObserver';
-import { ensureCaptionsOn, getMeetingCode, getMeetingTitle, isInCall, setCaptionsOverlayHidden, setKeepAlive } from './meetDom';
+import { ensureCaptionsOn, getCaptionsStatus, getMeetingCode, getMeetingTitle, isInCall, setCaptionsOverlayHidden, setKeepAlive, turnCaptionsOff } from './meetDom';
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
@@ -13,6 +13,8 @@ class MeetController {
   private readonly events = new MeetEventObserver((entry) => this.send(entry));
   private lastReported: string | null = null;
   private captionsEnforcer: number | null = null;
+  /** True when captions were off before recording started, so we switch them back off at stop. */
+  private captionsEnabledByUs = false;
   private settings: Settings | null = null;
 
   start(): void {
@@ -50,12 +52,13 @@ class MeetController {
       title: getMeetingTitle(),
       inCall: isInCall(),
       capturing: this.captions.isRunning,
+      captions: getCaptionsStatus(),
     };
   }
 
   private reportState(): void {
     const state = this.snapshot();
-    const key = `${state.url}|${state.meetingCode}|${state.title}|${state.inCall}|${state.capturing}`;
+    const key = JSON.stringify(state);
     if (key === this.lastReported) return;
     this.lastReported = key;
     sendFromContent({ type: 'meet/state', state }).catch(() => {
@@ -84,6 +87,8 @@ class MeetController {
     this.events.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
     this.captionsEnforcer = null;
+    if (this.captionsEnabledByUs && isInCall()) turnCaptionsOff();
+    this.captionsEnabledByUs = false;
     this.applyCaptureEffects();
     this.lastReported = null;
   }

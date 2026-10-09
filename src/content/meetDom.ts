@@ -4,6 +4,8 @@
  * attributes and structure over class names.
  */
 
+import type { CaptionsStatus } from '../shared/types';
+
 const CAPTION_CONTAINER_SELECTORS = [
   'div[aria-label="Captions"]',
   'div[aria-label="Subtitles"]',
@@ -31,27 +33,40 @@ export function isInCall(): boolean {
   );
 }
 
+/**
+ * The toolbar CC toggle. Several buttons mention captions (the toggle, caption
+ * settings, language picker); the toggle is the one whose label says "Turn on/off"
+ * or that exposes aria-pressed. Menu items and settings entries are skipped.
+ */
 function findCaptionsButton(): HTMLButtonElement | null {
-  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label]'));
-  return buttons.find((b) => /\bcaptions?\b|\bsubtitles?\b/i.test(b.getAttribute('aria-label') ?? '')) ?? null;
+  const candidates = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label]'))
+    .filter((b) => !b.disabled && b.offsetParent !== null)
+    .map((b) => ({ b, label: b.getAttribute('aria-label') ?? '' }))
+    .filter(({ label }) => /\bcaptions?\b|\bsubtitles?\b/i.test(label) && !/settings|language|translate/i.test(label));
+  const score = ({ b, label }: { b: HTMLButtonElement; label: string }) =>
+    (/\bturn (on|off)\b/i.test(label) ? 2 : 0) + (b.hasAttribute('aria-pressed') ? 1 : 0);
+  return candidates.sort((x, y) => score(y) - score(x))[0]?.b ?? null;
 }
-
-export type CaptionsStatus = 'on' | 'off' | 'unavailable';
 
 export function getCaptionsStatus(): CaptionsStatus {
   const button = findCaptionsButton();
-  if (!button) return 'unavailable';
+  if (!button) return getCaptionsContainer() ? 'on' : 'unavailable';
   const label = button.getAttribute('aria-label') ?? '';
   if (button.getAttribute('aria-pressed') === 'true' || /turn off|disable|hide/i.test(label)) return 'on';
-  if (getCaptionsContainer()) return 'on';
-  return 'off';
+  if (button.getAttribute('aria-pressed') === 'false' || /turn on|enable|show/i.test(label)) return 'off';
+  return getCaptionsContainer() ? 'on' : 'off';
 }
 
-/** Clicks the native CC button if captions are off. Returns the resulting status. */
+/** Clicks the native CC button if captions are off. Returns the status before the click. */
 export function ensureCaptionsOn(): CaptionsStatus {
   const status = getCaptionsStatus();
   if (status === 'off') findCaptionsButton()?.click();
   return status;
+}
+
+/** Turns captions off again (used to restore the state Meet Hunter found at start). */
+export function turnCaptionsOff(): void {
+  if (getCaptionsStatus() === 'on') findCaptionsButton()?.click();
 }
 
 const OVERLAY_STYLE_ID = 'meet-hunter-hide-captions';
