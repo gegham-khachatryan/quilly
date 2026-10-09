@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/gegham-khachatryan/quilly/actions/workflows/ci.yml"><img src="https://github.com/gegham-khachatryan/quilly/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
-  <a href="https://chromewebstore.google.com/detail/hmfcibigliiokgeabfpncelbfddjddbn"><img src="https://img.shields.io/badge/Chrome%20Web%20Store-coming%20soon-4249d2" alt="Chrome Web Store"></a>
+  <a href="https://github.com/gegham-khachatryan/quilly/releases"><img src="https://img.shields.io/badge/Chrome%20Web%20Store-coming%20soon-4249d2" alt="Chrome Web Store"></a>
   <a href="https://gegham-khachatryan.github.io/quilly/privacy"><img src="https://img.shields.io/badge/privacy-local%20only-c026d3" alt="Privacy"></a>
 </p>
 
@@ -98,9 +98,11 @@ Upload the zip in the Chrome Web Store developer dashboard. Listing copy, permis
 and data-use answers are in `store/listing.md`; the four images in `docs/screenshots/` are the store
 screenshots. The privacy policy is published from `docs/` via GitHub Pages.
 
-The manifest carries a public `key`, so the extension ID (`hmfcibigliiokgeabfpncelbfddjddbn`) is the
-same for the unpacked build, the zip and the store listing. The matching private key lives outside
-the repo at `~/.config/quilly/quilly.pem` and is only needed to pack a `.crx` by hand.
+The source manifest carries a public `key` so the unpacked developer build keeps a stable extension
+ID (and its local data) whichever folder it is loaded from. The packager strips it from the zip, because
+the Web Store rejects uploads with a key and assigns the published extension its own ID. The matching
+private key lives outside the repo at `~/.config/quilly/quilly.pem` and is only needed to pack a `.crx`
+by hand.
 
 </details>
 
