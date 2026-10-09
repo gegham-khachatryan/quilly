@@ -20,7 +20,24 @@ const src = join(root, 'store');
 const out = join(src, 'out');
 mkdirSync(out, { recursive: true });
 
+/** Headless Chrome happily screenshots an XML error page; refuse malformed SVG sources up front. */
+function assertWellFormedSvg(path) {
+  const text = readFileSync(path, 'utf8');
+  const tags = text.match(/<\/?[a-zA-Z][^>]*?>/g) ?? [];
+  const stack = [];
+  for (const tag of tags) {
+    if (tag.startsWith('<?') || tag.startsWith('<!')) continue;
+    const name = tag.match(/^<\/?([a-zA-Z][\w:-]*)/)[1];
+    if (tag.startsWith('</')) {
+      const open = stack.pop();
+      if (open !== name) throw new Error(`${path}: </${name}> closes <${open ?? 'nothing'}>`);
+    } else if (!tag.endsWith('/>')) stack.push(name);
+  }
+  if (stack.length) throw new Error(`${path}: unclosed <${stack.at(-1)}>`);
+}
+
 for (const file of readdirSync(src).filter((f) => f.endsWith('.svg'))) {
+  assertWellFormedSvg(join(src, file));
   const size = /width="(\d+)" height="(\d+)"/.exec(readFileSync(join(src, file), 'utf8'));
   if (!size) throw new Error(`${file}: missing width/height attributes`);
   const target = join(out, file.replace(/\.svg$/, '.png'));
