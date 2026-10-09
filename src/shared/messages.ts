@@ -1,10 +1,9 @@
-import type { ActiveRecording, AudioChunk, CaptionUpsert, MeetState, Session, TabRecordingState } from './types';
+import type { ActiveRecording, CaptionUpsert, MeetState, Session, TabRecordingState } from './types';
 
 // ---- content -> background -------------------------------------------------
 export type ContentMessage =
   | { type: 'meet/state'; state: MeetState }
-  | { type: 'caption/upsert'; entry: CaptionUpsert }
-  | { type: 'audio/chunk'; chunk: AudioChunk };
+  | { type: 'caption/upsert'; entry: CaptionUpsert };
 
 // ---- background -> content --------------------------------------------------
 export type BackgroundToContentMessage =

@@ -8,12 +8,6 @@ export transcripts or iterate on them with AI through OpenRouter.
 - **Auto-capture.** When you join a Meet call it turns on Meet's native captions (CC) and records
   every caption line with speaker and timestamp. Auto-start can be toggled off; you can also
   start/stop manually from the side panel or with the keyboard shortcut.
-- **Two transcript sources.** *Meet captions* (default, free, real speaker names) or *Call audio*: a
-  main-world script (`audiotap.js`) wraps `RTCPeerConnection` and `getUserMedia` to tap the call's
-  audio tracks, routes them through a 16 kHz Web Audio graph, cuts chunks at pauses in speech, skips
-  silence, and the background transcribes each chunk with an audio-capable OpenRouter model (Gemini
-  2.5 Flash by default, roughly $0.10–0.20 per hour of conversation). No captions involved; speakers
-  are labelled "You" and "Participants". Web Audio is not throttled in background tabs.
 - **Hand raises and reactions.** Meet's "Name raised their hand" toasts and floating emoji reactions
   are recorded as events in the transcript, exported alongside captions and visible to the AI.
 - **Live side panel.** The toolbar icon opens a Chrome side panel that streams the transcript as it is
@@ -53,12 +47,8 @@ After code changes run `npm run build` again and press the reload icon on the ex
 ```
 src/
   shared/      types, message contracts, settings, IndexedDB repos, OpenRouter client, exports
-  content/     runs on meet.google.com: call detection, captions/events observers, audio tap bridge
-  background/  service worker: session lifecycle, persistence, audio transcription queue, toolbar icon, shortcut
-public/
-  keepalive.js     main world: visibility + animation-frame shim while recording captions
-  audiotap.js      main world: WebRTC/getUserMedia tap, Web Audio chunking for the audio source
-  audio-worklet.js AudioWorklet processor used by audiotap.js
+  content/     runs on meet.google.com: call detection, enables CC, observes captions, hand raises, reactions
+  background/  service worker: session lifecycle, persistence, toolbar icon, shortcut
   sidepanel/   start/stop, auto-start toggle, live transcript of any active recording, recent sessions
   app/         sessions list, session detail (+ AI panel), settings
   ui/          React hooks and components shared by both surfaces

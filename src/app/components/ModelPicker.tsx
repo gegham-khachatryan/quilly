@@ -37,18 +37,8 @@ function Price({ model }: { model: OpenRouterModel }) {
 }
 
 /** Dropdown of OpenRouter models grouped by provider, with search and a custom-id escape hatch. */
-export function ModelPicker({
-  value,
-  onChange,
-  filter,
-}: {
-  value: string;
-  onChange: (model: string) => void;
-  /** Restrict the list, e.g. to models that accept audio input. */
-  filter?: (model: OpenRouterModel) => boolean;
-}) {
-  const [allModels, setAllModels] = useState<OpenRouterModel[] | null>(null);
-  const models = useMemo(() => (allModels && filter ? allModels.filter(filter) : allModels), [allModels, filter]);
+export function ModelPicker({ value, onChange }: { value: string; onChange: (model: string) => void }) {
+  const [models, setModels] = useState<OpenRouterModel[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -59,7 +49,7 @@ export function ModelPicker({
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getModels().then(setAllModels, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
+    getModels().then(setModels, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
   useEffect(() => {

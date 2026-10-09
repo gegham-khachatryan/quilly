@@ -39,16 +39,8 @@ export function RecordingControls({
 
   const canStart = Boolean(state?.isMeet && state.meet?.inCall);
   const inOtherTab = recording !== null && recording.tabId !== state?.tabId;
-  const audio = recording && !inOtherTab ? state?.meet?.audio ?? null : null;
-  const audioNote = !audio
-    ? ''
-    : audio.state === 'suspended'
-      ? ' · click inside the Meet tab once to start audio'
-      : audio.local + audio.remote === 0
-        ? ' · waiting for call audio'
-        : '';
   const statusText = recording
-    ? `Recording ${recording.session.title}${audioNote}`
+    ? `Recording ${recording.session.title}`
     : !state?.isMeet
       ? 'Open a Google Meet tab to record.'
       : !state.meet
@@ -96,7 +88,7 @@ export function RecordingControls({
           </button>
         )}
       </p>
-      {(error ?? recording?.issue) && <p className="text-xs text-rec">{error ?? recording?.issue}</p>}
+      {error && <p className="text-xs text-rec">{error}</p>}
     </div>
   );
 }

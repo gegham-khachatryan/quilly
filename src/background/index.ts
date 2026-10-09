@@ -14,7 +14,6 @@ import {
   stopRecording,
   toggleRecording,
 } from './sessionManager';
-import { handleAudioChunk } from './transcriber';
 
 const MEET_ORIGIN = 'https://meet.google.com/';
 
@@ -65,9 +64,6 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
       if (tabId !== undefined) await handleCaption(tabId, message.entry);
       return;
     }
-    case 'audio/chunk':
-      if (sender.tab?.id !== undefined) await handleAudioChunk(message.chunk);
-      return;
     case 'tab/getState':
       return getTabState(message.tabId) satisfies Promise<UiResponse['tab/getState']>;
     case 'recording/start':
