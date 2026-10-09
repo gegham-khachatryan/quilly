@@ -62,7 +62,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
     <div className="grid h-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--ai-w)]" style={{ '--ai-w': `${aiWidth}px` } as CSSProperties}>
       <section className="flex min-h-0 flex-col">
         {/* Header */}
-        <header className="border-b border-line bg-panel/60 backdrop-blur">
+        <header className="relative z-20 border-b border-line bg-panel/60 backdrop-blur">
           <div className="mx-auto w-full max-w-4xl px-6 py-4">
             <div className="flex items-start justify-between gap-6">
               <div className="min-w-0 flex-1">
@@ -101,8 +101,8 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
           </div>
         </header>
 
-        {/* Toolbar */}
-        <div className="border-b border-line">
+        {/* Toolbar: its speaker popover must float above the transcript but stay under the header's menus. */}
+        <div className="relative z-10 border-b border-line">
           <div className="mx-auto flex w-full max-w-4xl items-center gap-3 px-6 py-2.5">
             <label className="relative block flex-1 max-w-sm">
               <SearchIcon size={15} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
