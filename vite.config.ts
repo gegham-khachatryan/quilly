@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 const root = import.meta.dirname;
 
-// Builds the extension pages (popup, side panel, app) and the module service worker.
+// Builds the extension pages (side panel, app) and the module service worker.
 // The content script is built separately as an IIFE (see vite.content.config.ts)
 // because Chrome does not load content scripts as ES modules.
 export default defineConfig({
@@ -16,7 +16,6 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       input: {
-        popup: resolve(root, 'popup.html'),
         sidepanel: resolve(root, 'sidepanel.html'),
         app: resolve(root, 'app.html'),
         background: resolve(root, 'src/background/index.ts'),

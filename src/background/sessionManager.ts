@@ -104,7 +104,7 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
 }
 
 /**
- * @param manual true when the user stopped it (popup, side panel, shortcut):
+ * @param manual true when the user stopped it (side panel, shortcut):
  * auto-start then stays off for the remainder of this call.
  */
 export async function stopRecording(tabId: number, manual = false): Promise<Session | null> {

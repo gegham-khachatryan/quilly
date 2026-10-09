@@ -11,14 +11,13 @@ export type BackgroundToContentMessage =
   | { type: 'capture/stop' }
   | { type: 'meet/getState' };
 
-// ---- popup / side panel -> background --------------------------------------
+// ---- side panel / app -> background ------------------------------------------
 export type UiMessage =
   | { type: 'tab/getState'; tabId: number }
   | { type: 'recording/start'; tabId: number }
   | { type: 'recording/stop'; tabId: number }
   | { type: 'recording/active' }
-  | { type: 'tab/focus'; tabId: number }
-  | { type: 'sidepanel/open'; tabId: number };
+  | { type: 'tab/focus'; tabId: number };
 
 export type UiResponse = {
   'tab/getState': TabRecordingState;
@@ -26,7 +25,6 @@ export type UiResponse = {
   'recording/stop': Session | null;
   'recording/active': ActiveRecording[];
   'tab/focus': void;
-  'sidepanel/open': void;
 };
 
 // ---- background -> everyone (fire and forget) --------------------------------

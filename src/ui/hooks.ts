@@ -16,7 +16,7 @@ export function useSettings(): [Settings | null, (patch: Partial<Settings>) => P
   return [settings, update];
 }
 
-/** The tab the popup / side panel is attached to. */
+/** The active tab of the window the side panel lives in. */
 export function useCurrentTabId(): number | null {
   const [tabId, setTabId] = useState<number | null>(null);
   useEffect(() => {

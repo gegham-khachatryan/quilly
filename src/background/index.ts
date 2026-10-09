@@ -19,9 +19,9 @@ const MEET_ORIGIN = 'https://meet.google.com/';
 
 type Inbound = ContentMessage | UiMessage;
 
-chrome.runtime.onInstalled.addListener(() => {
-  void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false });
-});
+// The toolbar icon opens the side panel (there is no popup). Set on every worker
+// start so existing installs pick it up after an update, not only on install.
+void chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 
 chrome.runtime.onMessage.addListener((message: Inbound, sender, sendResponse) => {
   handle(message, sender).then(sendResponse, (error) => sendResponse(errorEnvelope(error)));
@@ -74,9 +74,6 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
       return listActiveRecordings() satisfies Promise<UiResponse['recording/active']>;
     case 'tab/focus':
       await focusTab(message.tabId);
-      return;
-    case 'sidepanel/open':
-      await chrome.sidePanel.open({ tabId: message.tabId });
       return;
   }
 }

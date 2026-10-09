@@ -18,8 +18,7 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Meet Hunter",
+    "default_title": "Meet Hunter \u2013 open live panel",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
