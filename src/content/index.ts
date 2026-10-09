@@ -11,6 +11,7 @@ import {
   isCaptionsShortcut,
   isCaptionsToggleTarget,
   isInCall,
+  setCaptionsButtonState,
   setCaptionsOverlayHidden,
   setKeepAlive,
   showToast,
@@ -72,6 +73,7 @@ class MeetController {
   }
 
   private reportState(): void {
+    if (this.captions.isRunning) this.applyCaptureEffects();
     const state = this.snapshot();
     const key = JSON.stringify(state);
     if (key === this.lastReported) return;
@@ -119,6 +121,7 @@ class MeetController {
   private enforceCaptions(): void {
     const status = ensureCaptionsOn();
     if (status === 'on') this.sawCaptionsOn = true;
+    this.applyCaptureEffects(); // Meet re-renders the toolbar; keep the button state current
     if (status === 'off' && this.sawCaptionsOn && !(this.settings ?? DEFAULT_SETTINGS).hideCaptionsOverlay) {
       void updateSettings({ hideCaptionsOverlay: true });
       showToast('Captions hidden. Quilly keeps recording them.');
@@ -143,6 +146,7 @@ class MeetController {
     const settings = this.settings ?? DEFAULT_SETTINGS;
     setKeepAlive(capturing && settings.keepAliveInBackground);
     setCaptionsOverlayHidden(capturing && settings.hideCaptionsOverlay);
+    setCaptionsButtonState(capturing ? (settings.hideCaptionsOverlay ? 'hidden' : 'shown') : null);
   }
 }
 

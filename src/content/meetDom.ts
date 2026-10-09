@@ -381,3 +381,56 @@ export function showToast(message: string, ms = 2600): void {
     window.setTimeout(() => toast.remove(), 300);
   }, ms);
 }
+
+// ---- captions button state ------------------------------------------------------
+
+const CC_STYLE_ID = 'quilly-cc-state';
+const CC_STATE_ATTR = 'data-quilly-cc';
+
+export type CaptionsButtonState = 'shown' | 'hidden';
+
+/**
+ * While recording, Meet's captions button acts as show/hide for the overlay.
+ * Mirror that on the button itself so it reads like a native toggle: a brand
+ * badge says Quilly is using captions, the button dims when the overlay is
+ * hidden, and the tooltip explains. Safe to call often (Meet re-renders it).
+ */
+export function setCaptionsButtonState(state: CaptionsButtonState | null): void {
+  const button = findCaptionsButton();
+  if (!state) {
+    for (const el of Array.from(document.querySelectorAll(`[${CC_STATE_ATTR}]`))) {
+      el.removeAttribute(CC_STATE_ATTR);
+      el.removeAttribute('data-quilly-title');
+      const original = el.getAttribute('data-quilly-original-title');
+      if (original !== null) {
+        el.setAttribute('title', original);
+        el.removeAttribute('data-quilly-original-title');
+      } else el.removeAttribute('title');
+    }
+    document.getElementById(CC_STYLE_ID)?.remove();
+    return;
+  }
+  if (!button) return;
+  if (!document.getElementById(CC_STYLE_ID)) {
+    const style = document.createElement('style');
+    style.id = CC_STYLE_ID;
+    style.textContent = `
+button[${CC_STATE_ATTR}] { position: relative !important; }
+button[${CC_STATE_ATTR}]::after {
+  content: ''; position: absolute; right: 4px; top: 4px; width: 9px; height: 9px; border-radius: 50%;
+  background: linear-gradient(135deg, #4249d2, #d428b9); box-shadow: 0 0 0 2px rgba(0, 0, 0, .55); pointer-events: none;
+}
+button[${CC_STATE_ATTR}="hidden"] { opacity: .55 !important; }`;
+    document.documentElement.appendChild(style);
+  }
+  if (button.getAttribute(CC_STATE_ATTR) !== state) {
+    if (!button.hasAttribute('data-quilly-original-title') && button.hasAttribute('title')) {
+      button.setAttribute('data-quilly-original-title', button.getAttribute('title') ?? '');
+    }
+    button.setAttribute(CC_STATE_ATTR, state);
+    button.setAttribute(
+      'title',
+      state === 'hidden' ? 'Captions hidden · Quilly is recording them. Click to show.' : 'Captions shown · Quilly is recording them. Click to hide.',
+    );
+  }
+}
