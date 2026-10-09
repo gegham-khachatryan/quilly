@@ -11,11 +11,11 @@
     <rect width="256" height="256" rx="56" fill="url(#tile)"/>
     <rect width="256" height="128" rx="56" fill="url(#sheen)"/>
     <g transform="scale(2)">
-    <path d="M38 94 C 34 60, 58 32, 102 22 C 94 62, 72 86, 38 94 Z" fill="#fff" opacity=".97"/>
-    <path d="M40 92 C 56 70, 74 50, 100 24" fill="none" stroke="url(#tile)" stroke-width="5" stroke-linecap="round"/>
-    <path d="M58 72 L 66 84 M70 58 L 80 68" fill="none" stroke="url(#tile)" stroke-width="4" stroke-linecap="round"/>
-    <path d="M40 92 L 26 108" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
-    <path d="M46 108 H 86" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".9"/>
+    <path d="M48 78 C 22 54, 40 8, 108 18 C 86 38, 66 60, 48 78 Z" fill="#fff"/>
+    <path d="M56 72 C 72 58, 90 40, 108 18 C 108 46, 92 70, 58 76 Z" fill="#fff" opacity=".93"/>
+    <path d="M50 76 C 68 60, 88 40, 107 19" fill="none" stroke="url(#tile)" stroke-width="3.6" stroke-linecap="round"/>
+    <path d="M58 68 L 46 56 M67 59 L 57 44 M76 50 L 68 34 M85 41 L 80 26 M94 32 L 92 20 M66 62 L 74 70 M76 52 L 86 60 M86 42 L 96 48" fill="none" stroke="url(#tile)" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M45 73 C 40 82, 34 92, 26 104 L 23 100 C 30 90, 36 82, 51 79 Z" fill="#fff"/>
     </g>
   </g>
   <text x="440" y="262" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Inter, Arial, sans-serif" font-size="96" font-weight="700" fill="#e7eaf2" letter-spacing="-2">Quilly</text>
