@@ -1,18 +1,32 @@
 import { useState } from 'react';
 import { sendToBackground } from '../shared/messages';
-import type { TabRecordingState } from '../shared/types';
+import type { ActiveRecording, TabRecordingState } from '../shared/types';
 
-/** Start/stop button + status line shared by the popup and side panel. */
-export function RecordingControls({ state, onChanged, size = 'md' }: { state: TabRecordingState | null; onChanged: () => void; size?: 'sm' | 'md' }) {
+/**
+ * Start/stop button + status line.
+ * - `state` describes the tab the UI is attached to (where a new recording would start).
+ * - `recording` is the recording the Stop button acts on. The side panel passes the
+ *   session being viewed, which may live in another tab; the stop still reaches it.
+ */
+export function RecordingControls({
+  state,
+  recording,
+  onChanged,
+  size = 'md',
+}: {
+  state: TabRecordingState | null;
+  recording: ActiveRecording | null;
+  onChanged: () => void;
+  size?: 'sm' | 'md';
+}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = async (type: 'recording/start' | 'recording/stop') => {
-    if (!state) return;
+  const run = async (action: () => Promise<unknown>) => {
     setBusy(true);
     setError(null);
     try {
-      await sendToBackground({ type, tabId: state.tabId });
+      await action();
       onChanged();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -21,16 +35,16 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
     }
   };
 
-  if (!state) return <p className="text-xs text-muted">Connecting…</p>;
+  if (!state && !recording) return <p className="text-xs text-muted">Connecting…</p>;
 
-  const recording = Boolean(state.session);
-  const canStart = state.isMeet && state.meet?.inCall;
-  const statusText = !state.isMeet
-    ? 'Open a Google Meet tab to record.'
-    : !state.meet
-      ? 'Meet page is loading…'
-      : recording
-        ? `Recording ${state.session?.title ?? ''}`
+  const canStart = Boolean(state?.isMeet && state.meet?.inCall);
+  const inOtherTab = recording !== null && recording.tabId !== state?.tabId;
+  const statusText = recording
+    ? `Recording ${recording.session.title}`
+    : !state?.isMeet
+      ? 'Open a Google Meet tab to record.'
+      : !state.meet
+        ? 'Meet page is loading…'
         : state.meet.inCall
           ? state.autoStartSuppressed
             ? 'Stopped. Auto-start is paused until this call ends.'
@@ -42,11 +56,19 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
   return (
     <div className="space-y-2">
       {recording ? (
-        <button className={`btn-stop ${btn}`} disabled={busy} onClick={() => run('recording/stop')}>
+        <button
+          className={`btn-stop ${btn}`}
+          disabled={busy}
+          onClick={() => void run(() => sendToBackground({ type: 'recording/stop', tabId: recording.tabId }))}
+        >
           <span className="rec-dot" /> Stop recording
         </button>
       ) : (
-        <button className={`btn-brand ${btn}`} disabled={busy || !canStart} onClick={() => run('recording/start')}>
+        <button
+          className={`btn-brand ${btn}`}
+          disabled={busy || !canStart || !state}
+          onClick={() => state && void run(() => sendToBackground({ type: 'recording/start', tabId: state.tabId }))}
+        >
           <span className="relative inline-flex h-3 w-3 items-center justify-center rounded-full bg-white/25">
             <span className="h-1.5 w-1.5 rounded-full bg-white" />
           </span>
@@ -55,7 +77,16 @@ export function RecordingControls({ state, onChanged, size = 'md' }: { state: Ta
       )}
       <p className="flex items-center gap-1.5 text-xs text-muted">
         {recording && <span className="rec-dot shrink-0" />}
-        <span className="truncate">{statusText}</span>
+        <span className="min-w-0 flex-1 truncate">{statusText}</span>
+        {inOtherTab && (
+          <button
+            className="shrink-0 text-accent hover:underline"
+            onClick={() => void sendToBackground({ type: 'tab/focus', tabId: recording.tabId })}
+            title="Switch to the Meet tab being recorded"
+          >
+            Go to tab
+          </button>
+        )}
       </p>
       {error && <p className="text-xs text-rec">{error}</p>}
     </div>

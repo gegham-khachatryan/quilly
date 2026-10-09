@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { chatRepo, entriesRepo, sessionsRepo } from '../shared/db';
 import { onBroadcast, sendToBackground } from '../shared/messages';
 import { getSettings, onSettingsChange, updateSettings } from '../shared/settings';
-import type { ChatMessage, Session, Settings, TabRecordingState, TranscriptEntry } from '../shared/types';
+import type { ActiveRecording, ChatMessage, Session, Settings, TabRecordingState, TranscriptEntry } from '../shared/types';
 
 export function useSettings(): [Settings | null, (patch: Partial<Settings>) => Promise<void>] {
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -48,6 +48,27 @@ export function useTabState(tabId: number | null, pollMs = 1000): [TabRecordingS
     };
   }, [refresh, pollMs]);
   return [state, refresh];
+}
+
+/** All recordings in progress across tabs; polled so stops caused by call end are picked up promptly. */
+export function useActiveRecordings(pollMs = 1000): [ActiveRecording[] | null, () => Promise<void>] {
+  const [active, setActive] = useState<ActiveRecording[] | null>(null);
+  const refresh = useCallback(async () => {
+    const list = await sendToBackground({ type: 'recording/active' }).catch(() => null);
+    if (list) setActive(list);
+  }, []);
+  useEffect(() => {
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), pollMs);
+    const off = onBroadcast((m) => {
+      if (m.type === 'sessions/changed') void refresh();
+    });
+    return () => {
+      window.clearInterval(timer);
+      off();
+    };
+  }, [refresh, pollMs]);
+  return [active, refresh];
 }
 
 export function useSessions(): [Session[] | null, () => Promise<void>] {

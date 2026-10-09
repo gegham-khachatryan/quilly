@@ -1,12 +1,13 @@
 import { formatDuration, formatRelative, pluralize } from '../shared/format';
 import { sendToBackground } from '../shared/messages';
 import { Toggle } from '../ui/components';
-import { openAppPage, useCurrentTabId, useSessions, useSettings, useTabState } from '../ui/hooks';
+import { openAppPage, useActiveRecordings, useCurrentTabId, useSessions, useSettings, useTabState } from '../ui/hooks';
 import { RecordingControls } from '../ui/RecordingControls';
 
 export function Popup() {
   const tabId = useCurrentTabId();
   const [state, refresh] = useTabState(tabId);
+  const [active, refreshActive] = useActiveRecordings();
   const [settings, updateSettings] = useSettings();
   const [sessions] = useSessions();
   const recent = sessions?.slice(0, 3) ?? [];
@@ -29,7 +30,14 @@ export function Popup() {
       </header>
 
       <section className="card p-3">
-        <RecordingControls state={state} onChanged={() => void refresh()} />
+        <RecordingControls
+          state={state}
+          recording={active?.find((r) => r.tabId === tabId) ?? null}
+          onChanged={() => {
+            void refresh();
+            void refreshActive();
+          }}
+        />
         {state?.session && (
           <p className="mt-2 text-xs text-muted">
             {pluralize(state.session.entryCount, 'caption')} · {formatDuration(state.session.startedAt, null)}

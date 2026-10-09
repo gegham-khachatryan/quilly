@@ -1,53 +1,81 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatDateTime, formatDuration, formatRelative, pluralize } from '../shared/format';
 import { countCaptions } from '../shared/transcript';
-import type { Session } from '../shared/types';
-import { Empty, TranscriptList } from '../ui/components';
-import { openAppPage, useCurrentTabId, useEntries, useSessions, useStickToBottom, useTabState } from '../ui/hooks';
+import type { ActiveRecording, Session } from '../shared/types';
+import { Empty, Toggle, TranscriptList } from '../ui/components';
+import { openAppPage, useActiveRecordings, useCurrentTabId, useEntries, useSessions, useSettings, useStickToBottom, useTabState } from '../ui/hooks';
+import { ArrowLeftIcon, ListIcon, SettingsIcon } from '../ui/icons';
 import { RecordingControls } from '../ui/RecordingControls';
 
 /**
- * Side panel for the active Meet tab.
- * - Live session: streams its transcript (and keeps showing it after it ends, in the same panel instance).
- * - Otherwise: list of recent sessions; picking one shows its transcript inline.
+ * Global side panel. It is not bound to the tab it was opened from: recordings
+ * are looked up across all tabs, so the live transcript keeps streaming while
+ * the user works in another tab. Opening the panel while something is recording
+ * jumps straight to that transcript; the list of recent sessions is one step back.
  */
 export function SidePanel() {
   const tabId = useCurrentTabId();
-  const [state, refresh] = useTabState(tabId);
+  const [tabState, refreshTab] = useTabState(tabId);
+  const [active, refreshActive] = useActiveRecordings();
   const [sessions] = useSessions();
+  const [settings, updateSettings] = useSettings();
   const [viewedId, setViewedId] = useState<string | null>(null);
 
-  const liveId = state?.session?.id ?? null;
+  // Show each recording the first time this panel instance sees it, then respect the user's navigation.
+  const announced = useRef(new Set<string>());
   useEffect(() => {
-    if (liveId) setViewedId(liveId);
-  }, [liveId]);
+    for (const r of active ?? []) {
+      if (announced.current.has(r.session.id)) continue;
+      announced.current.add(r.session.id);
+      setViewedId(r.session.id);
+    }
+  }, [active]);
 
-  const viewed = (liveId && state?.session) || sessions?.find((s) => s.id === viewedId) || null;
+  const viewedLive = active?.find((r) => r.session.id === viewedId) ?? null;
+  const viewed: Session | null = viewedLive?.session ?? sessions?.find((s) => s.id === viewedId) ?? null;
+  // Stop acts on the session in view; otherwise on whatever this tab is recording.
+  const stopTarget = viewedLive ?? active?.find((r) => r.tabId === tabId) ?? null;
+
+  const refresh = () => {
+    void refreshTab();
+    void refreshActive();
+  };
 
   return (
     <div className="flex h-full flex-col">
-      <header className="space-y-2 border-b border-line p-3">
+      <header className="space-y-2.5 border-b border-line p-3">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-sm font-semibold">
-            <img src="/logo.svg" alt="" className="h-4 w-4" /> {viewed ? 'Transcript' : 'Meet Hunter'}
+            <img src="/logo.svg" alt="" className="h-4 w-4" /> Meet Hunter
           </h1>
-          <button className="text-xs text-muted hover:text-fg" onClick={() => openAppPage('#/sessions')}>
-            All sessions
-          </button>
+          <div className="flex items-center gap-1">
+            <button className="btn-ghost h-7 gap-1 px-2 text-xs" onClick={() => openAppPage('#/sessions')} title="All sessions">
+              <ListIcon size={14} /> Sessions
+            </button>
+            <button className="btn-ghost h-7 w-7 px-0" onClick={() => openAppPage('#/settings')} title="Settings">
+              <SettingsIcon size={14} />
+            </button>
+          </div>
         </div>
-        <RecordingControls state={state} onChanged={() => void refresh()} size="sm" />
+        <RecordingControls state={tabState} recording={stopTarget} onChanged={refresh} size="sm" />
       </header>
 
       {viewed ? (
-        <TranscriptPane session={viewed} live={viewed.id === liveId} onBack={() => setViewedId(null)} />
+        <TranscriptPane session={viewed} live={viewedLive} onBack={() => setViewedId(null)} />
       ) : (
-        <RecentSessions sessions={sessions} onSelect={(id) => setViewedId(id)} />
+        <RecentSessions sessions={sessions} activeIds={new Set(active?.map((r) => r.session.id))} onSelect={setViewedId} />
+      )}
+
+      {settings && (
+        <footer className="border-t border-line px-3 py-2 text-xs">
+          <Toggle label="Auto-start in calls" checked={settings.autoStart} onChange={(v) => void updateSettings({ autoStart: v })} />
+        </footer>
       )}
     </div>
   );
 }
 
-function TranscriptPane({ session, live, onBack }: { session: Session; live: boolean; onBack: () => void }) {
+function TranscriptPane({ session, live, onBack }: { session: Session; live: ActiveRecording | null; onBack: () => void }) {
   const entries = useEntries(session.id);
   const scrollRef = useStickToBottom<HTMLDivElement>(live ? entries.at(-1)?.updatedAt : null);
   const [, tick] = useState(0);
@@ -59,20 +87,21 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-line bg-panel px-3 py-2 text-xs">
-        {!live && (
-          <button className="shrink-0 text-muted hover:text-fg" onClick={onBack} title="Back to recent sessions">
-            ←
-          </button>
-        )}
+      <div className="flex items-center gap-2 border-b border-line bg-panel px-2 py-2 text-xs">
+        <button className="btn-ghost h-7 w-7 shrink-0 px-0" onClick={onBack} title="Back to sessions">
+          <ArrowLeftIcon size={14} />
+        </button>
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium">{session.title}</span>
+          <span className="flex items-center gap-1.5">
+            {live && <span className="rec-dot shrink-0" />}
+            <span className="truncate font-medium">{session.title}</span>
+          </span>
           <span className="block text-muted" title={formatDateTime(session.startedAt)}>
-            {pluralize(countCaptions(entries), 'caption')} · {formatDuration(session.startedAt, session.endedAt)}
+            {pluralize(countCaptions(entries), 'caption')} · {live ? formatDuration(session.startedAt, null) : formatDuration(session.startedAt, session.endedAt)}
           </span>
         </span>
         <button
-          className="btn-ghost shrink-0 gap-1 px-2 py-1 text-xs"
+          className="btn-ghost h-7 shrink-0 gap-1 px-2 text-xs"
           onClick={() => openAppPage(`#/sessions/${session.id}`)}
           title="Open session page: export, search, AI"
         >
@@ -90,7 +119,15 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
   );
 }
 
-function RecentSessions({ sessions, onSelect }: { sessions: Session[] | null; onSelect: (id: string) => void }) {
+function RecentSessions({
+  sessions,
+  activeIds,
+  onSelect,
+}: {
+  sessions: Session[] | null;
+  activeIds: Set<string>;
+  onSelect: (id: string) => void;
+}) {
   if (sessions === null) return null;
   if (sessions.length === 0) {
     return (
@@ -104,7 +141,7 @@ function RecentSessions({ sessions, onSelect }: { sessions: Session[] | null; on
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted">Recent sessions</p>
       <ul className="space-y-2">
         {sessions.slice(0, 20).map((s) => {
-          const live = s.status === 'recording';
+          const live = activeIds.has(s.id) || s.status === 'recording';
           return (
             <li key={s.id}>
               <button

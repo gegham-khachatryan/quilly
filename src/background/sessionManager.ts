@@ -2,7 +2,7 @@ import { entriesRepo, sessionsRepo } from '../shared/db';
 import { newId } from '../shared/format';
 import { broadcast, sendToTab } from '../shared/messages';
 import { getSettings } from '../shared/settings';
-import type { CaptionUpsert, MeetState, Session } from '../shared/types';
+import type { ActiveRecording, CaptionUpsert, MeetState, Session } from '../shared/types';
 
 /**
  * Active recordings keyed by tab id, persisted in chrome.storage.session so
@@ -45,6 +45,22 @@ export async function getActiveSession(tabId: number): Promise<Session | null> {
   const sessionId = (await readActive())[tabId];
   if (!sessionId) return null;
   return (await sessionsRepo.get(sessionId)) ?? null;
+}
+
+/** Every recording in progress, regardless of which tab or window is focused. */
+export async function listActiveRecordings(): Promise<ActiveRecording[]> {
+  const active = await readActive();
+  const sessions = await Promise.all(Object.values(active).map((id) => sessionsRepo.get(id)));
+  return Object.keys(active)
+    .map((tabId, i) => ({ tabId: Number(tabId), session: sessions[i] }))
+    .filter((r): r is ActiveRecording => r.session !== undefined)
+    .sort((a, b) => b.session.startedAt - a.session.startedAt);
+}
+
+/** Bring a Meet tab (and its window) to the front. */
+export async function focusTab(tabId: number): Promise<void> {
+  const tab = await chrome.tabs.update(tabId, { active: true });
+  if (tab?.windowId !== undefined) await chrome.windows.update(tab.windowId, { focused: true });
 }
 
 async function queryMeetState(tabId: number): Promise<MeetState | null> {

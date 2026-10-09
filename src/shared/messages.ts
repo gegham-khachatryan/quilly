@@ -1,4 +1,4 @@
-import type { CaptionUpsert, MeetState, Session, TabRecordingState } from './types';
+import type { ActiveRecording, CaptionUpsert, MeetState, Session, TabRecordingState } from './types';
 
 // ---- content -> background -------------------------------------------------
 export type ContentMessage =
@@ -16,12 +16,16 @@ export type UiMessage =
   | { type: 'tab/getState'; tabId: number }
   | { type: 'recording/start'; tabId: number }
   | { type: 'recording/stop'; tabId: number }
+  | { type: 'recording/active' }
+  | { type: 'tab/focus'; tabId: number }
   | { type: 'sidepanel/open'; tabId: number };
 
 export type UiResponse = {
   'tab/getState': TabRecordingState;
   'recording/start': Session;
   'recording/stop': Session | null;
+  'recording/active': ActiveRecording[];
+  'tab/focus': void;
   'sidepanel/open': void;
 };
 
