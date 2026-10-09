@@ -37,7 +37,7 @@ export function SettingsPage() {
         />
         <Toggle
           label="Hide caption overlay while recording"
-          hint="Captions stay on (they are the transcript source) but are invisible and take no space in the Meet window."
+          hint="Captions stay on (they are the transcript source) but are invisible and take no space in the Meet window. While recording, Meet’s captions button and the C key toggle this instead of switching captions off."
           checked={settings.hideCaptionsOverlay}
           onChange={(v) => void update({ hideCaptionsOverlay: v })}
         />

@@ -260,3 +260,50 @@ function tightest(el: Element, test: (text: string) => boolean): Element {
 function normalizeText(value: string | null | undefined): string {
   return (value ?? '').replace(/\s+/g, ' ').trim();
 }
+
+// ---- captions control intercept ------------------------------------------------
+
+/** True when the event originated on Meet's captions toggle button. */
+export function isCaptionsToggleTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  const button = target.closest('button');
+  return button !== null && button === findCaptionsButton();
+}
+
+/** Meet toggles captions with the bare "c" key when focus is not in a text field. */
+export function isCaptionsShortcut(event: KeyboardEvent): boolean {
+  if (event.key.toLowerCase() !== 'c' || event.ctrlKey || event.metaKey || event.altKey) return false;
+  const el = event.target instanceof HTMLElement ? event.target : null;
+  return !el || !(el.isContentEditable || /^(input|textarea|select)$/i.test(el.tagName));
+}
+
+const TOAST_ID = 'quilly-toast';
+
+/** Small transient notice at the bottom of the Meet window. */
+export function showToast(message: string, ms = 2600): void {
+  document.getElementById(TOAST_ID)?.remove();
+  const toast = document.createElement('div');
+  toast.id = TOAST_ID;
+  toast.textContent = message;
+  toast.setAttribute('role', 'status');
+  Object.assign(toast.style, {
+    position: 'fixed',
+    left: '50%',
+    bottom: '112px',
+    transform: 'translateX(-50%)',
+    zIndex: '2147483647',
+    padding: '10px 14px',
+    borderRadius: '999px',
+    background: 'rgba(23, 26, 34, .94)',
+    color: '#e7eaf2',
+    font: '500 13px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    boxShadow: '0 6px 24px rgba(0,0,0,.35)',
+    pointerEvents: 'none',
+    transition: 'opacity .25s',
+  } satisfies Partial<CSSStyleDeclaration>);
+  document.body.appendChild(toast);
+  window.setTimeout(() => {
+    toast.style.opacity = '0';
+    window.setTimeout(() => toast.remove(), 300);
+  }, ms);
+}

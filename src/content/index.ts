@@ -1,9 +1,21 @@
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
-import { DEFAULT_SETTINGS, getSettings, onSettingsChange } from '../shared/settings';
+import { DEFAULT_SETTINGS, getSettings, onSettingsChange, updateSettings } from '../shared/settings';
 import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
 import { MeetEventObserver } from './eventObserver';
-import { ensureCaptionsOn, getCaptionsStatus, getMeetingCode, getMeetingTitle, isInCall, setCaptionsOverlayHidden, setKeepAlive, turnCaptionsOff } from './meetDom';
+import {
+  ensureCaptionsOn,
+  getCaptionsStatus,
+  getMeetingCode,
+  getMeetingTitle,
+  isCaptionsShortcut,
+  isCaptionsToggleTarget,
+  isInCall,
+  setCaptionsOverlayHidden,
+  setKeepAlive,
+  showToast,
+  turnCaptionsOff,
+} from './meetDom';
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
@@ -15,6 +27,9 @@ class MeetController {
   private captionsEnforcer: number | null = null;
   /** True when captions were off before recording started, so we switch them back off at stop. */
   private captionsEnabledByUs = false;
+  /** Set once captions were seen on during this capture; after that, "off" means the user turned them off. */
+  private sawCaptionsOn = false;
+  private readonly guard = new CaptionsControlGuard(() => this.toggleOverlay());
   private settings: Settings | null = null;
 
   start(): void {
@@ -87,10 +102,32 @@ class MeetController {
     this.events.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
     this.captionsEnforcer = null;
+    this.guard.detach();
     if (this.captionsEnabledByUs && isInCall()) turnCaptionsOff();
     this.captionsEnabledByUs = false;
     this.applyCaptureEffects();
     this.lastReported = null;
+  }
+
+  /**
+   * Captions are the transcript source, so they must stay on while recording.
+   * If they were switched off through a path we do not intercept (e.g. Meet's
+   * settings menu), turn them back on and read the intent as "hide the overlay".
+   */
+  private enforceCaptions(): void {
+    const status = ensureCaptionsOn();
+    if (status === 'on') this.sawCaptionsOn = true;
+    if (status === 'off' && this.sawCaptionsOn && !(this.settings ?? DEFAULT_SETTINGS).hideCaptionsOverlay) {
+      void updateSettings({ hideCaptionsOverlay: true });
+      showToast('Captions hidden. Quilly keeps recording them.');
+    }
+  }
+
+  /** Meet's captions control becomes show/hide while recording. The preference is persisted. */
+  private toggleOverlay(): void {
+    const hidden = !(this.settings ?? DEFAULT_SETTINGS).hideCaptionsOverlay;
+    void updateSettings({ hideCaptionsOverlay: hidden });
+    showToast(hidden ? 'Captions hidden. Quilly keeps recording them.' : 'Captions shown.');
   }
 
   private applySettings(settings: Settings): void {
@@ -105,6 +142,45 @@ class MeetController {
     setKeepAlive(capturing && settings.keepAliveInBackground);
     setCaptionsOverlayHidden(capturing && settings.hideCaptionsOverlay);
   }
+}
+
+/**
+ * While recording, intercepts the ways a user turns captions off in Meet (the
+ * toolbar button and the "c" shortcut) and routes them to the overlay toggle
+ * instead, so the transcript source is never cut.
+ */
+class CaptionsControlGuard {
+  private attached = false;
+
+  constructor(private readonly onToggle: () => void) {}
+
+  attach(): void {
+    if (this.attached) return;
+    this.attached = true;
+    for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click'] as const) document.addEventListener(type, this.onPointer, true);
+    window.addEventListener('keydown', this.onKey, true);
+  }
+
+  detach(): void {
+    if (!this.attached) return;
+    this.attached = false;
+    for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click'] as const) document.removeEventListener(type, this.onPointer, true);
+    window.removeEventListener('keydown', this.onKey, true);
+  }
+
+  private readonly onPointer = (event: Event): void => {
+    if (!isCaptionsToggleTarget(event.target)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.type === 'click') this.onToggle();
+  };
+
+  private readonly onKey = (event: KeyboardEvent): void => {
+    if (!isCaptionsShortcut(event)) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.onToggle();
+  };
 }
 
 new MeetController().start();
