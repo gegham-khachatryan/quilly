@@ -40,7 +40,7 @@ body { @apply bg-bg text-fg antialiased; font-family: ui-sans-serif, system-ui, 
 /* Brand gradient (matches the logo) for the main record action. */
 @utility btn-brand {
   @apply btn text-white shadow-lg shadow-indigo-500/25;
-  background-image: linear-gradient(135deg, #4f46e5 0%, #c026d3 100%);
+  background-image: linear-gradient(135deg, #4249d2 0%, #d428b9 100%);
   position: relative;
   overflow: hidden;
   &::after {
