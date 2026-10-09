@@ -20,6 +20,21 @@ import {
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
+/**
+ * Announced on `document` when a controller starts. Chrome leaves the previous
+ * content script in place when the extension is reloaded or updated (with a dead
+ * chrome.runtime), and the background may inject a fresh copy into an open tab;
+ * the earlier instance hears this and disposes itself so exactly one owns the page.
+ */
+const TAKEOVER_EVENT = 'quilly:takeover';
+
+function runtimeAlive(): boolean {
+  try {
+    return Boolean(chrome.runtime?.id);
+  } catch {
+    return false;
+  }
+}
 
 class MeetController {
   private readonly captions = new CaptionObserver((entry) => this.send(entry));
@@ -32,21 +47,55 @@ class MeetController {
   private sawCaptionsOn = false;
   private readonly guard = new CaptionsControlGuard(() => this.toggleOverlay());
   private settings: Settings | null = null;
+  private readonly instanceId = Math.random().toString(36).slice(2);
+  private poll: number | null = null;
+  private offSettings: (() => void) | null = null;
+  private disposed = false;
 
   start(): void {
+    document.addEventListener(TAKEOVER_EVENT, this.onTakeover);
+    document.dispatchEvent(new CustomEvent(TAKEOVER_EVENT, { detail: this.instanceId }));
     void getSettings().then((s) => this.applySettings(s));
-    onSettingsChange((s) => this.applySettings(s));
-    chrome.runtime.onMessage.addListener((message: BackgroundToContentMessage, _sender, sendResponse) => {
-      try {
-        sendResponse(this.handle(message));
-      } catch (error) {
-        sendResponse(errorEnvelope(error));
-      }
-      return false;
-    });
-    window.setInterval(() => this.reportState(), STATE_POLL_MS);
+    this.offSettings = onSettingsChange((s) => this.applySettings(s));
+    chrome.runtime.onMessage.addListener(this.onMessage);
+    this.poll = window.setInterval(() => this.reportState(), STATE_POLL_MS);
     this.reportState();
   }
+
+  /**
+   * Hand the page over to a newer instance: stop observing and undo every DOM
+   * effect, but leave Meet's captions as they are. The new instance resumes the
+   * recording (the background re-issues capture/start) and owns the restore.
+   */
+  private dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    document.removeEventListener(TAKEOVER_EVENT, this.onTakeover);
+    if (this.poll !== null) window.clearInterval(this.poll);
+    this.poll = null;
+    try {
+      chrome.runtime.onMessage.removeListener(this.onMessage);
+      this.offSettings?.();
+    } catch {
+      // runtime already gone
+    }
+    this.offSettings = null;
+    this.teardownCapture({ restoreCaptions: false });
+  }
+
+  private readonly onTakeover = (event: Event): void => {
+    if ((event as CustomEvent<string>).detail === this.instanceId) return;
+    this.dispose();
+  };
+
+  private readonly onMessage = (message: BackgroundToContentMessage, _sender: unknown, sendResponse: (r: unknown) => void): boolean => {
+    try {
+      sendResponse(this.handle(message));
+    } catch (error) {
+      sendResponse(errorEnvelope(error));
+    }
+    return false;
+  };
 
   private handle(message: BackgroundToContentMessage): unknown {
     switch (message.type) {
@@ -73,6 +122,12 @@ class MeetController {
   }
 
   private reportState(): void {
+    if (this.disposed) return;
+    if (!runtimeAlive()) {
+      // Extension reloaded or removed: this copy is orphaned. Clean up the page.
+      this.dispose();
+      return;
+    }
     if (this.captions.isRunning) this.applyCaptureEffects();
     const state = this.snapshot();
     const key = JSON.stringify(state);
@@ -102,12 +157,16 @@ class MeetController {
   }
 
   private stopCapture(): void {
+    this.teardownCapture({ restoreCaptions: true });
+  }
+
+  private teardownCapture({ restoreCaptions }: { restoreCaptions: boolean }): void {
     this.captions.stop();
     this.events.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
     this.captionsEnforcer = null;
     this.guard.detach();
-    if (this.captionsEnabledByUs && isInCall()) turnCaptionsOff();
+    if (restoreCaptions && this.captionsEnabledByUs && isInCall()) turnCaptionsOff();
     this.captionsEnabledByUs = false;
     this.applyCaptureEffects();
     this.lastReported = null;
@@ -136,6 +195,7 @@ class MeetController {
   }
 
   private applySettings(settings: Settings): void {
+    if (this.disposed) return; // a newer instance owns the page's DOM effects now
     this.settings = settings;
     this.applyCaptureEffects();
   }
