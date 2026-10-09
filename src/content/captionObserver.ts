@@ -1,5 +1,5 @@
 import type { CaptionUpsert } from '../shared/types';
-import { findCaptionBlocks, getCaptionsContainer, parseCaptionBlock, tagCaptionsContainer } from './meetDom';
+import { describeCaptionsLayout, findCaptionBlocks, getCaptionsContainer, parseCaptionBlock, tagCaptionsContainer } from './meetDom';
 
 interface TrackedEntry {
   localId: string;
@@ -53,6 +53,7 @@ export class CaptionObserver {
       const container = getCaptionsContainer();
       if (container && container !== this.container) this.attach(container);
       else if (!container && this.container) this.detach();
+      else if (container) tagCaptionsContainer(container); // wrappers can change as Meet re-renders
     };
     tryAttach();
     this.containerPoll = window.setInterval(tryAttach, CONTAINER_POLL_MS);
@@ -62,6 +63,9 @@ export class CaptionObserver {
     this.detach();
     this.container = container;
     tagCaptionsContainer(container);
+    window.setTimeout(() => {
+      if (this.container === container) describeCaptionsLayout(container);
+    }, 1500);
     this.observer = new MutationObserver(() => this.scheduleFlush());
     this.observer.observe(container, { childList: true, subtree: true, characterData: true });
     this.scheduleFlush();

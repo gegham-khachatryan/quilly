@@ -71,17 +71,19 @@ export function turnCaptionsOff(): void {
 
 const OVERLAY_STYLE_ID = 'quilly-hide-captions';
 const CAPTIONS_TAG = 'data-quilly-captions';
+const WRAPPER_TAG = 'data-quilly-captions-wrap';
+const MAX_WRAPPER_DEPTH = 6;
 
 /**
  * Hides Meet's caption region while keeping it alive for capture.
  *
- * The rule only targets the element the caption observer is currently reading
- * (tagged via `tagCaptionsContainer`), never a static selector that could one
- * day match a wrapper holding other controls. It collapses the region in place
- * rather than repositioning it: no fixed geometry, no pixel offsets, so Meet's
- * flex layout simply gives the space back and stays consistent across window
- * resizes and participant grid changes. Meet keeps updating the (now 0-height)
- * DOM, and `display:none` is avoided so observers inside Meet keep working.
+ * The rule only targets elements tagged at runtime by `tagCaptionsContainer`:
+ * the exact element the caption observer reads, plus any ancestor whose only
+ * visible content is that region (Meet wraps captions in a band that reserves
+ * its own height). Everything is collapsed in place with no fixed geometry, so
+ * Meet's flex layout gives the space back and stays consistent across window
+ * resizes and participant grid changes. `display:none` is avoided so Meet keeps
+ * updating and observing the DOM.
  */
 export function setCaptionsOverlayHidden(hidden: boolean): void {
   const existing = document.getElementById(OVERLAY_STYLE_ID);
@@ -92,10 +94,11 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
   if (existing) return;
   const style = document.createElement('style');
   style.id = OVERLAY_STYLE_ID;
-  style.textContent = `[${CAPTIONS_TAG}] {
+  style.textContent = `[${CAPTIONS_TAG}], [${WRAPPER_TAG}] {
   height: 0 !important;
   min-height: 0 !important;
   max-height: 0 !important;
+  flex-basis: 0 !important;
   margin: 0 !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
@@ -107,12 +110,66 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
   document.documentElement.appendChild(style);
 }
 
-/** Marks the live captions container so the hide rule applies to it and nothing else. */
+/**
+ * Marks the live captions container, and the wrappers that exist only to hold
+ * it, so the hide rule applies to them and nothing else. Safe to call often.
+ */
 export function tagCaptionsContainer(container: HTMLElement | null): void {
-  for (const el of Array.from(document.querySelectorAll(`[${CAPTIONS_TAG}]`))) {
-    if (el !== container) el.removeAttribute(CAPTIONS_TAG);
+  const wrappers = new Set<Element>();
+  if (container) {
+    let el: HTMLElement | null = container.parentElement;
+    for (let depth = 0; el && el !== document.body && depth < MAX_WRAPPER_DEPTH; depth++) {
+      if (!isPureWrapper(el, depth === 0 ? container : (el.children[0] as HTMLElement))) break;
+      wrappers.add(el);
+      el = el.parentElement;
+    }
+  }
+  for (const el of Array.from(document.querySelectorAll(`[${CAPTIONS_TAG}], [${WRAPPER_TAG}]`))) {
+    if (el !== container && !wrappers.has(el)) {
+      el.removeAttribute(CAPTIONS_TAG);
+      el.removeAttribute(WRAPPER_TAG);
+    }
   }
   container?.setAttribute(CAPTIONS_TAG, '1');
+  for (const el of wrappers) el.setAttribute(WRAPPER_TAG, '1');
+}
+
+/** An element whose other children render nothing is only there to hold `child`. */
+function isPureWrapper(el: HTMLElement, child: HTMLElement): boolean {
+  if (!child || child.parentElement !== el) return false;
+  for (const sibling of Array.from(el.children)) {
+    if (sibling === child) continue;
+    const rect = sibling.getBoundingClientRect();
+    if (rect.width * rect.height > 0 || (sibling.textContent ?? '').trim()) return false;
+  }
+  return true;
+}
+
+/** One-off console dump of the captions region and its ancestors, for diagnosing layout issues. */
+export function describeCaptionsLayout(container: HTMLElement): void {
+  const chain: Record<string, unknown>[] = [];
+  let el: HTMLElement | null = container;
+  for (let depth = 0; el && el !== document.body && depth < 10; depth++) {
+    const cs = getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    chain.push({
+      depth,
+      tag: el.tagName.toLowerCase(),
+      jsname: el.getAttribute('jsname'),
+      class: el.className,
+      quilly: el.hasAttribute(CAPTIONS_TAG) ? 'captions' : el.hasAttribute(WRAPPER_TAG) ? 'wrapper' : '',
+      size: `${Math.round(rect.width)}×${Math.round(rect.height)}`,
+      display: cs.display,
+      position: cs.position,
+      inlineStyle: el.getAttribute('style'),
+      children: Array.from(el.children).map((c) => {
+        const r = c.getBoundingClientRect();
+        return `${c.tagName.toLowerCase()}${c.getAttribute('jsname') ? `[${c.getAttribute('jsname')}]` : ''} ${Math.round(r.width)}×${Math.round(r.height)}`;
+      }),
+    });
+    el = el.parentElement;
+  }
+  console.info('[quilly] captions layout', chain);
 }
 
 /** Flag read by keepalive.js (main world) to decide whether to spoof visibility. */
