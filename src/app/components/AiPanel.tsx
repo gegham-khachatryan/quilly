@@ -70,7 +70,7 @@ export function AiPanel({ session, entries }: { session: Session; entries: Trans
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const scrollRef = useStickToBottom<HTMLDivElement>(`${messages.length}:${streaming?.length ?? 0}`);
+  const scrollRef = useStickToBottom<HTMLDivElement>();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

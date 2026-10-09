@@ -77,7 +77,7 @@ export function SidePanel() {
 
 function TranscriptPane({ session, live, onBack }: { session: Session; live: ActiveRecording | null; onBack: () => void }) {
   const entries = useEntries(session.id);
-  const scrollRef = useStickToBottom<HTMLDivElement>(live ? entries.at(-1)?.updatedAt : null);
+  const scrollRef = useStickToBottom<HTMLDivElement>(live);
   const [, tick] = useState(0);
   useEffect(() => {
     if (!live) return;

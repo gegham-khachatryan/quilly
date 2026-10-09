@@ -126,23 +126,37 @@ export function useChat(sessionId: string): [ChatMessage[], () => Promise<void>]
   return [messages, refresh];
 }
 
-/** Keeps a scrollable element pinned to the bottom unless the user scrolled up. */
-export function useStickToBottom<T extends HTMLElement>(dep: unknown) {
+/**
+ * Keeps a scrollable element pinned to the bottom unless the user scrolled up.
+ * Follows the rendered content rather than a data key: a caption that keeps
+ * growing in place after a later event (a reaction, a hand raise) still pushes
+ * the view down, and so does a shrinking container.
+ */
+export function useStickToBottom<T extends HTMLElement>(enabled = true) {
   const ref = useRef<T>(null);
   const pinned = useRef(true);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el || !enabled) return;
+    const stick = () => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+    };
     const onScroll = () => {
       pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
     };
+    pinned.current = true;
+    stick();
     el.addEventListener('scroll', onScroll);
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
-  useEffect(() => {
-    const el = ref.current;
-    if (el && pinned.current) el.scrollTop = el.scrollHeight;
-  }, [dep]);
+    const content = new MutationObserver(stick);
+    content.observe(el, { childList: true, subtree: true, characterData: true });
+    const box = new ResizeObserver(stick);
+    box.observe(el);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      content.disconnect();
+      box.disconnect();
+    };
+  }, [enabled]);
   return ref;
 }
 
