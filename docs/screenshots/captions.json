@@ -1,0 +1,18 @@
+{
+  "live-panel": {
+    "title": "Live transcript while you stay in the call",
+    "subtitle": "The side panel streams captions as people speak and follows the recording across tabs."
+  },
+  "session-ai": {
+    "title": "Ask AI about any meeting",
+    "subtitle": "Summary, action items, decisions or a follow-up email, with your own OpenRouter key."
+  },
+  "sessions": {
+    "title": "Every meeting, searchable",
+    "subtitle": "Stored only in your browser. Export as text, Markdown or JSON."
+  },
+  "settings": {
+    "title": "Pick any model",
+    "subtitle": "The model picker searches OpenRouter's live catalogue with provider, price and context."
+  }
+}

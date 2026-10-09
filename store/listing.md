@@ -38,11 +38,17 @@ PRIVATE BY DESIGN
 Quilly is not affiliated with Google. Recording a conversation may require participants' consent where you live; please check before you record.
 ```
 
-**Screenshots** (1280×800 or 640×400, PNG/JPEG, up to 5) – take from a real call:
-1. Side panel with a live transcript next to a Meet call.
-2. Session page with transcript and the AI panel answering "action items".
-3. Sessions list.
-4. Settings (model picker open).
+**Screenshots** (1280×800, up to 5) – the same images the README uses, in `docs/screenshots/`:
+
+| File | Caption | How to capture the raw image (1280×800 window) |
+| --- | --- | --- |
+| `live-panel.png` | Live transcript while you stay in the call | Meet call with the side panel open and a few captions streamed |
+| `session-ai.png` | Ask AI about any meeting | Session page after asking for action items, AI panel visible |
+| `sessions.png` | Every meeting, searchable | Sessions list with 4–6 sessions |
+| `settings.png` | Pick any model | Settings page with the model picker open |
+
+Drop raw captures into `docs/screenshots/raw/<name>.png`, run `npm run screenshots`, commit. The
+script adds the caption band and frame; captions are edited in `docs/screenshots/captions.json`.
 
 **Small promo tile** (440×280): `store/out/promo-small.png` · **Marquee** (1400×560, optional): `store/out/marquee.png`.
 Generate with `npm run store-assets` (renders the SVGs in `store/` with headless Chrome; set `CHROME_BIN` if Chrome is not in the default location).
