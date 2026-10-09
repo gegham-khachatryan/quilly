@@ -16,26 +16,12 @@ your own OpenRouter key. Everything stays in your browser.
 
 ## Highlights
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/screenshots/live-panel.png" alt="Live transcript in the side panel"></td>
-    <td width="50%"><img src="docs/screenshots/session-ai.png" alt="Ask AI about a meeting"></td>
-  </tr>
-  <tr>
-    <td><b>Live, wherever you are.</b> The side panel streams the transcript as people speak and follows the active recording across tabs. Hand raises and emoji reactions are logged alongside what was said.</td>
-    <td><b>Ask AI.</b> Summary, action items, decisions, a follow-up email, or any question about the meeting. Streaming answers, Markdown rendering, chats saved per session.</td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/sessions.png" alt="Sessions list"></td>
-    <td><img src="docs/screenshots/settings.png" alt="Settings with the model picker"></td>
-  </tr>
-  <tr>
-    <td><b>Every meeting, searchable.</b> Sessions with search, speaker filter, rename and delete. Export as <code>.txt</code>, <code>.md</code>, <code>.json</code> or copy to the clipboard.</td>
-    <td><b>Your key, any model.</b> The picker searches OpenRouter's live catalogue with provider, price and context length. No Quilly account, no server.</td>
-  </tr>
-</table>
+- **Live, wherever you are.** The side panel streams the transcript as people speak and follows the active recording across tabs. Hand raises and emoji reactions are logged alongside what was said.
+- **Ask AI.** Summary, action items, decisions, a follow-up email, or any question about the meeting. Streaming answers, Markdown rendering, chats saved per session.
+- **Every meeting, searchable.** Sessions with search, speaker filter, rename and delete. Export as `.txt`, `.md`, `.json` or copy to the clipboard.
+- **Your key, any model.** The picker searches OpenRouter's live catalogue with provider, price and context length. No Quilly account, no server.
 
-### Everything it does
+### In detail
 
 - **Auto-start.** Joining a call starts a recording and turns captions on. Captions Quilly switched on are switched off again when it stops. Auto-start can be disabled; `Alt+Shift+R` toggles recording by hand.
 - **Invisible captions.** The caption overlay is hidden by default while recording, and the space it would take is given back to the video grid. Meet's captions button and the `c` key show or hide it instead of cutting the transcript source.
