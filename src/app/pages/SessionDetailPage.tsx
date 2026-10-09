@@ -21,7 +21,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
   const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const live = session?.status === 'recording';
-  const scrollRef = useStickToBottom<HTMLDivElement>(live);
+  const scrollRef = useStickToBottom<HTMLDivElement>(Boolean(live));
   const [aiWidth, setAiWidth, resetAiWidth] = useStoredWidth('ui.aiPanelWidth', AI_PANEL_DEFAULT, AI_PANEL_MIN, AI_PANEL_MAX);
   const asideRef = useRef<HTMLElement>(null);
 
