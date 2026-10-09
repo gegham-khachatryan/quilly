@@ -76,9 +76,26 @@ body { @apply bg-bg text-fg antialiased; font-family: ui-sans-serif, system-ui, 
 
 .prose-chat p { margin: 0 0 .5rem; }
 .prose-chat ul, .prose-chat ol { margin: 0 0 .5rem 1.25rem; }
+.prose-chat li { margin: .15rem 0; }
+.prose-chat li > ul, .prose-chat li > ol { margin-top: .15rem; margin-bottom: .15rem; }
 .prose-chat ul { list-style: disc; }
 .prose-chat ol { list-style: decimal; }
-.prose-chat h1, .prose-chat h2, .prose-chat h3 { font-weight: 600; margin: .75rem 0 .35rem; }
+.prose-chat li.task { display: flex; gap: .5rem; align-items: baseline; list-style: none; margin-left: -1.25rem; }
+.prose-chat li.task > input { @apply mt-0.5 h-3.5 w-3.5 shrink-0 translate-y-0.5 appearance-none rounded border border-muted/60 bg-transparent; }
+.prose-chat li.task > input:checked { @apply border-accent bg-accent; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%230f1117' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E"); background-size: 100% 100%; }
+.prose-chat li.task.done > div { @apply text-muted; }
+.prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 { font-weight: 600; margin: .75rem 0 .35rem; }
+.prose-chat h1 { font-size: 1.1em; }
+.prose-chat h2 { font-size: 1.05em; }
+.prose-chat > :first-child { margin-top: 0; }
+.prose-chat > :last-child { margin-bottom: 0; }
+.prose-chat hr { @apply my-3 border-line; }
+.prose-chat blockquote { @apply my-2 border-l-2 border-line pl-3 text-muted; }
+.prose-chat del { @apply text-muted; }
+.prose-chat a { @apply text-accent underline-offset-2 hover:underline; }
+.prose-chat table { @apply my-2 w-full border-collapse text-[0.9em]; }
+.prose-chat th, .prose-chat td { @apply border border-line px-2 py-1 align-top; }
+.prose-chat th { @apply bg-panel-2 font-semibold; }
 .prose-chat code { @apply rounded bg-panel-2 px-1 py-0.5 text-[0.85em]; }
 .prose-chat pre { @apply my-2 overflow-x-auto rounded-md bg-panel-2 p-3 text-xs; }
 .prose-chat pre code { background: transparent; padding: 0; }
