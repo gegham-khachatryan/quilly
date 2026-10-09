@@ -25,7 +25,7 @@ export interface ChatTurn {
 }
 
 const appHeaders = {
-  'HTTP-Referer': 'https://github.com/gegham/quilly',
+  'HTTP-Referer': 'https://github.com/gegham-khachatryan/quilly',
   'X-Title': 'Quilly',
 };
 

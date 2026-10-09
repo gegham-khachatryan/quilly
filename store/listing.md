@@ -67,4 +67,4 @@ Generate with `npm run store-assets` (renders the SVGs in `store/` with headless
 
 **Certifications**: data is not sold; not used or transferred for purposes unrelated to the single purpose; not used to determine creditworthiness or for lending.
 
-**Privacy policy URL**: https://gegham.github.io/quilly/privacy (enable GitHub Pages from the `docs/` folder).
+**Privacy policy URL**: https://gegham-khachatryan.github.io/quilly/privacy (enable GitHub Pages from the `docs/` folder).

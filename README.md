@@ -56,7 +56,7 @@ git push --follow-tags   # CI builds the zip and attaches it to a GitHub release
 
 Upload the zip in the Chrome Web Store developer dashboard. Listing copy, permission justifications and
 data-use answers are in `store/listing.md`; the privacy policy is published from `docs/` via GitHub
-Pages (`https://gegham.github.io/quilly/privacy`).
+Pages (`https://gegham-khachatryan.github.io/quilly/privacy`).
 
 The manifest carries a public `key`, so the extension ID is the same for the unpacked build, the zip
 and the store listing. The matching private key lives outside the repo at `~/.config/quilly/quilly.pem`
