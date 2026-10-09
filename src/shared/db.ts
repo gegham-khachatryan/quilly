@@ -1,16 +1,17 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { ChatMessage, Session, TranscriptEntry } from './types';
 
-interface MeetHunterDB extends DBSchema {
+interface QuillyDB extends DBSchema {
   sessions: { key: string; value: Session; indexes: { byStartedAt: number } };
   entries: { key: string; value: TranscriptEntry; indexes: { bySession: string; bySessionSeq: [string, number] } };
   chat: { key: string; value: ChatMessage; indexes: { bySession: string; bySessionCreated: [string, number] } };
 }
 
-let dbPromise: Promise<IDBPDatabase<MeetHunterDB>> | null = null;
+let dbPromise: Promise<IDBPDatabase<QuillyDB>> | null = null;
 
-function db(): Promise<IDBPDatabase<MeetHunterDB>> {
-  dbPromise ??= openDB<MeetHunterDB>('meet-hunter', 1, {
+function db(): Promise<IDBPDatabase<QuillyDB>> {
+  // The database keeps its original name on purpose: renaming it would orphan every recorded session.
+  dbPromise ??= openDB<QuillyDB>('meet-hunter', 1, {
     upgrade(database) {
       const sessions = database.createObjectStore('sessions', { keyPath: 'id' });
       sessions.createIndex('byStartedAt', 'startedAt');

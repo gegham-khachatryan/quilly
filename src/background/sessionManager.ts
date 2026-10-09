@@ -209,7 +209,7 @@ export async function handleMeetState(tabId: number, state: MeetState): Promise<
   }
 
   if ((await getSettings()).autoStart && !(await isAutoStartSuppressed(tabId))) {
-    await startRecording(tabId, state).catch((error) => console.warn('[meet-hunter] auto-start failed', error));
+    await startRecording(tabId, state).catch((error) => console.warn('[quilly] auto-start failed', error));
   }
 }
 

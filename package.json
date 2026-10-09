@@ -1,9 +1,9 @@
 {
-  "name": "meet-hunter",
+  "name": "quilly",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Chrome extension that records Google Meet captions locally and lets you export or iterate on them with AI via OpenRouter.",
+  "description": "Quilly – transcripts for Google Meet. Records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
   "scripts": {
     "dev": "vite build --watch",
     "build": "npm run icons && vite build && vite build --config vite.content.config.ts",

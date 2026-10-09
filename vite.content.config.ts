@@ -11,7 +11,7 @@ export default defineConfig({
     lib: {
       entry: resolve(root, 'src/content/index.ts'),
       formats: ['iife'],
-      name: 'MeetHunterContent',
+      name: 'QuillyContent',
       fileName: () => 'content.js',
     },
   },

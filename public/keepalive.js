@@ -1,8 +1,8 @@
 // Runs in the page's main world on meet.google.com (see manifest "world": "MAIN").
 //
 // Google Meet stops rendering live captions when its tab is hidden. Two things
-// cause that and both are handled here, only while Meet Hunter is recording
-// (the content script sets `data-meet-hunter-keepalive="1"` on <html>):
+// cause that and both are handled here, only while Quilly is recording
+// (the content script sets `data-quilly-keepalive="1"` on <html>):
 //
 // 1. Meet reads the Page Visibility API / focus and goes idle. We report the
 //    document as visible and focused and swallow the visibilitychange/blur events.
@@ -14,7 +14,7 @@
 //
 // With the flag absent everything behaves natively.
 (() => {
-  const FLAG = 'meetHunterKeepalive';
+  const FLAG = 'quillyKeepalive';
   const FRAME_MS = 16;
   const active = () => document.documentElement.dataset[FLAG] === '1';
 

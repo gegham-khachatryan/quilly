@@ -13,7 +13,7 @@ export function App() {
     <div className="flex h-full flex-col">
       <nav className="flex items-center gap-3 border-b border-line bg-panel px-4 py-2">
         <button className="flex items-center gap-2 text-sm font-semibold" onClick={() => navigate('#/sessions')}>
-          <img src="/logo.svg" alt="" className="h-5 w-5" /> Meet Hunter
+          <img src="/logo.svg" alt="" className="h-5 w-5" /> Quilly
         </button>
 
         {route.name === 'session' && (

@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Meet Hunter",
+  "name": "Quilly – transcripts for Google Meet",
+  "short_name": "Quilly",
   "version": "0.1.0",
-  "description": "Records Google Meet captions locally. Export transcripts or iterate on them with AI via OpenRouter.",
+  "description": "Transcripts for Google Meet: records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
   "minimum_chrome_version": "116",
   "permissions": [
     "storage",
@@ -18,7 +19,7 @@
     "type": "module"
   },
   "action": {
-    "default_title": "Meet Hunter \u2013 open live panel",
+    "default_title": "Quilly – open live panel",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",

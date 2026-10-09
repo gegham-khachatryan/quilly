@@ -46,7 +46,7 @@ export function SidePanel() {
       <header className="space-y-2.5 border-b border-line p-3">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-sm font-semibold">
-            <img src="/logo.svg" alt="" className="h-4 w-4" /> Meet Hunter
+            <img src="/logo.svg" alt="" className="h-4 w-4" /> Quilly
           </h1>
           <div className="flex items-center gap-1">
             <button className="btn-ghost h-7 gap-1 px-2 text-xs" onClick={() => openAppPage('#/sessions')} title="All sessions">

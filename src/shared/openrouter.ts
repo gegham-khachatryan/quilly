@@ -25,8 +25,8 @@ export interface ChatTurn {
 }
 
 const appHeaders = {
-  'HTTP-Referer': 'https://github.com/gegham/meet-hunter',
-  'X-Title': 'Meet Hunter',
+  'HTTP-Referer': 'https://github.com/gegham/quilly',
+  'X-Title': 'Quilly',
 };
 
 export async function listModels(signal?: AbortSignal): Promise<OpenRouterModel[]> {

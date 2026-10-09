@@ -64,12 +64,12 @@ export function ensureCaptionsOn(): CaptionsStatus {
   return status;
 }
 
-/** Turns captions off again (used to restore the state Meet Hunter found at start). */
+/** Turns captions off again (used to restore the state Quilly found at start). */
 export function turnCaptionsOff(): void {
   if (getCaptionsStatus() === 'on') findCaptionsButton()?.click();
 }
 
-const OVERLAY_STYLE_ID = 'meet-hunter-hide-captions';
+const OVERLAY_STYLE_ID = 'quilly-hide-captions';
 
 /**
  * Hides Meet's caption overlay while keeping it alive for capture. The region
@@ -103,8 +103,8 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
 
 /** Flag read by keepalive.js (main world) to decide whether to spoof visibility. */
 export function setKeepAlive(enabled: boolean): void {
-  if (enabled) document.documentElement.dataset.meetHunterKeepalive = '1';
-  else delete document.documentElement.dataset.meetHunterKeepalive;
+  if (enabled) document.documentElement.dataset.quillyKeepalive = '1';
+  else delete document.documentElement.dataset.quillyKeepalive;
 }
 
 export function getCaptionsContainer(): HTMLElement | null {

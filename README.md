@@ -1,4 +1,4 @@
-# Meet Hunter
+# Quilly – transcripts for Google Meet
 
 Chrome extension (Manifest V3) that records Google Meet captions locally and lets you
 export transcripts or iterate on them with AI through OpenRouter.

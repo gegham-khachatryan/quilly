@@ -44,7 +44,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
     try {
       await toggleRecording(tabId);
     } catch (error) {
-      console.warn('[meet-hunter] toggle-recording ignored:', error);
+      console.warn('[quilly] toggle-recording ignored:', error);
       await flashBadge(tabId, '!');
     }
   })();
