@@ -1,5 +1,5 @@
 import type { CaptionUpsert } from '../shared/types';
-import { findCaptionBlocks, getCaptionsContainer, parseCaptionBlock } from './meetDom';
+import { findCaptionBlocks, getCaptionsContainer, parseCaptionBlock, tagCaptionsContainer } from './meetDom';
 
 interface TrackedEntry {
   localId: string;
@@ -61,6 +61,7 @@ export class CaptionObserver {
   private attach(container: HTMLElement): void {
     this.detach();
     this.container = container;
+    tagCaptionsContainer(container);
     this.observer = new MutationObserver(() => this.scheduleFlush());
     this.observer.observe(container, { childList: true, subtree: true, characterData: true });
     this.scheduleFlush();
@@ -70,6 +71,7 @@ export class CaptionObserver {
     this.observer?.disconnect();
     this.observer = null;
     this.container = null;
+    tagCaptionsContainer(null);
     if (this.flushTimer !== null) window.clearTimeout(this.flushTimer);
     this.flushTimer = null;
   }

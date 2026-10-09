@@ -70,12 +70,18 @@ export function turnCaptionsOff(): void {
 }
 
 const OVERLAY_STYLE_ID = 'quilly-hide-captions';
+const CAPTIONS_TAG = 'data-quilly-captions';
 
 /**
- * Hides Meet's caption overlay while keeping it alive for capture. The region
- * is taken out of the layout flow (fixed, over the video, zero opacity, no
- * pointer events) rather than display:none, so the video grid reclaims the
- * space the captions would occupy while Meet keeps updating and observing it.
+ * Hides Meet's caption region while keeping it alive for capture.
+ *
+ * The rule only targets the element the caption observer is currently reading
+ * (tagged via `tagCaptionsContainer`), never a static selector that could one
+ * day match a wrapper holding other controls. It collapses the region in place
+ * rather than repositioning it: no fixed geometry, no pixel offsets, so Meet's
+ * flex layout simply gives the space back and stays consistent across window
+ * resizes and participant grid changes. Meet keeps updating the (now 0-height)
+ * DOM, and `display:none` is avoided so observers inside Meet keep working.
  */
 export function setCaptionsOverlayHidden(hidden: boolean): void {
   const existing = document.getElementById(OVERLAY_STYLE_ID);
@@ -86,19 +92,27 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
   if (existing) return;
   const style = document.createElement('style');
   style.id = OVERLAY_STYLE_ID;
-  style.textContent = `${CAPTION_CONTAINER_SELECTORS.join(', ')} {
-  position: fixed !important;
-  left: 0 !important;
-  bottom: 96px !important;
-  top: auto !important;
-  width: min(640px, 60vw) !important;
-  max-height: 40vh !important;
+  style.textContent = `[${CAPTIONS_TAG}] {
+  height: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
   margin: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  border: 0 !important;
+  overflow: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-  visibility: visible !important;
 }`;
   document.documentElement.appendChild(style);
+}
+
+/** Marks the live captions container so the hide rule applies to it and nothing else. */
+export function tagCaptionsContainer(container: HTMLElement | null): void {
+  for (const el of Array.from(document.querySelectorAll(`[${CAPTIONS_TAG}]`))) {
+    if (el !== container) el.removeAttribute(CAPTIONS_TAG);
+  }
+  container?.setAttribute(CAPTIONS_TAG, '1');
 }
 
 /** Flag read by keepalive.js (main world) to decide whether to spoof visibility. */
@@ -109,8 +123,11 @@ export function setKeepAlive(enabled: boolean): void {
 
 export function getCaptionsContainer(): HTMLElement | null {
   for (const selector of CAPTION_CONTAINER_SELECTORS) {
-    const el = document.querySelector<HTMLElement>(selector);
-    if (el) return el;
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+      // A selector that ever matched a wrapper around the call controls must not be hidden or observed.
+      if (el.querySelector('button[aria-label*="Leave call" i], button[aria-label*="End call" i], button[aria-label*="microphone" i]')) continue;
+      return el;
+    }
   }
   return null;
 }
