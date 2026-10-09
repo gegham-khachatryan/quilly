@@ -72,8 +72,10 @@ export function turnCaptionsOff(): void {
 const OVERLAY_STYLE_ID = 'meet-hunter-hide-captions';
 
 /**
- * Visually hides Meet's caption overlay without removing it from layout, so the
- * DOM keeps updating and capture continues. `display: none` would be risky here.
+ * Hides Meet's caption overlay while keeping it alive for capture. The region
+ * is taken out of the layout flow (fixed, over the video, zero opacity, no
+ * pointer events) rather than display:none, so the video grid reclaims the
+ * space the captions would occupy while Meet keeps updating and observing it.
  */
 export function setCaptionsOverlayHidden(hidden: boolean): void {
   const existing = document.getElementById(OVERLAY_STYLE_ID);
@@ -84,7 +86,18 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
   if (existing) return;
   const style = document.createElement('style');
   style.id = OVERLAY_STYLE_ID;
-  style.textContent = `${CAPTION_CONTAINER_SELECTORS.join(', ')} { opacity: 0 !important; pointer-events: none !important; }`;
+  style.textContent = `${CAPTION_CONTAINER_SELECTORS.join(', ')} {
+  position: fixed !important;
+  left: 0 !important;
+  bottom: 96px !important;
+  top: auto !important;
+  width: min(640px, 60vw) !important;
+  max-height: 40vh !important;
+  margin: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: visible !important;
+}`;
   document.documentElement.appendChild(style);
 }
 
