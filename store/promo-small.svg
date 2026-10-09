@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="440" height="280" viewBox="0 0 440 280">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#171a22"/><stop offset="1" stop-color="#0f1117"/></linearGradient>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#c026d3"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <radialGradient id="glow" cx=".3" cy=".3" r=".8"><stop offset="0" stop-color="#6ea8fe" stop-opacity=".25"/><stop offset="1" stop-color="#6ea8fe" stop-opacity="0"/></radialGradient>
+  </defs>
+  <rect width="440" height="280" fill="url(#bg)"/>
+  <rect width="440" height="280" fill="url(#glow)"/>
+  <g transform="translate(40 76)">
+    <rect width="128" height="128" rx="28" fill="url(#tile)"/>
+    <rect width="128" height="64" rx="28" fill="url(#sheen)"/>
+    <g fill="#fff" stroke="none">
+      <rect x="22" y="52" width="12" height="24" rx="6"/>
+      <rect x="40" y="36" width="12" height="56" rx="6"/>
+      <rect x="58" y="24" width="12" height="80" rx="6"/>
+      <rect x="76" y="40" width="12" height="48" rx="6"/>
+      <rect x="94" y="56" width="12" height="16" rx="6"/>
+    </g>
+  </g>
+  <text x="196" y="132" font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Inter, Arial, sans-serif" font-size="46" font-weight="700" fill="#e7eaf2" letter-spacing="-1">Quilly</text>
+  <text x="198" y="164" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Inter, Arial, sans-serif" font-size="17" fill="#8b93a7">Transcripts for Google Meet</text>
+  <g transform="translate(198 186)" font-family="-apple-system, 'SF Pro Text', 'Helvetica Neue', Inter, Arial, sans-serif" font-size="12" fill="#b7bdcc">
+    <rect width="68" height="22" rx="11" fill="#1f232d" stroke="#2a2f3b"/><text x="34" y="15" text-anchor="middle">Local</text>
+    <rect x="76" width="72" height="22" rx="11" fill="#1f232d" stroke="#2a2f3b"/><text x="112" y="15" text-anchor="middle">Export</text>
+    <rect x="156" width="60" height="22" rx="11" fill="#1f232d" stroke="#2a2f3b"/><text x="186" y="15" text-anchor="middle">Ask AI</text>
+  </g>
+</svg>
