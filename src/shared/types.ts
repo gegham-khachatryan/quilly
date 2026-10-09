@@ -46,8 +46,19 @@ export interface ChatMessage {
   createdAt: number;
 }
 
+/**
+ * Where the transcript comes from.
+ * - captions: Meet's native captions are turned on and read from the DOM (free, speaker names).
+ * - audio: the call audio is tapped in the page and transcribed via an OpenRouter audio model
+ *   (no captions needed; speakers are "You" / "Participants").
+ */
+export type CaptureSource = 'captions' | 'audio';
+
 export interface Settings {
   autoStart: boolean;
+  captureSource: CaptureSource;
+  /** OpenRouter model used to transcribe audio chunks (must accept audio input). */
+  transcriptionModel: string;
   /** Keep Meet rendering captions while the tab is in the background (visibility shim). */
   keepAliveInBackground: boolean;
   /** Capture captions but keep Meet's caption overlay invisible. */
@@ -63,6 +74,26 @@ export interface MeetState {
   title: string;
   inCall: boolean;
   capturing: boolean;
+  /** Present while capturing from audio: context state and how many tracks are tapped. */
+  audio: AudioTapStatus | null;
+}
+
+export interface AudioTapStatus {
+  state: 'running' | 'suspended' | 'closed';
+  local: number;
+  remote: number;
+}
+
+export type AudioBus = 'local' | 'remote';
+
+/** A chunk of speech captured from the call, ready for transcription. */
+export interface AudioChunk {
+  sessionId: string;
+  bus: AudioBus;
+  startedAt: number;
+  durationMs: number;
+  /** 16-bit mono PCM WAV, base64-encoded. */
+  wavBase64: string;
 }
 
 /** An entry observed in the Meet DOM; captions are re-sent as their text grows. */
@@ -78,6 +109,8 @@ export interface CaptionUpsert {
 export interface ActiveRecording {
   tabId: number;
   session: Session;
+  /** Last capture problem worth telling the user about (e.g. transcription failed), or null. */
+  issue: string | null;
 }
 
 export interface TabRecordingState {

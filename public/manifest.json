@@ -42,7 +42,8 @@
         "https://meet.google.com/*"
       ],
       "js": [
-        "keepalive.js"
+        "keepalive.js",
+        "audiotap.js"
       ],
       "run_at": "document_start",
       "world": "MAIN"
@@ -65,5 +66,15 @@
       },
       "description": "Start or stop recording the current Google Meet tab"
     }
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "audio-worklet.js"
+      ],
+      "matches": [
+        "https://meet.google.com/*"
+      ]
+    }
+  ]
 }

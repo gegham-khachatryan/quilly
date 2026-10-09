@@ -4,6 +4,8 @@ const KEY = 'settings';
 
 export const DEFAULT_SETTINGS: Settings = {
   autoStart: true,
+  captureSource: 'captions',
+  transcriptionModel: 'google/gemini-2.5-flash',
   keepAliveInBackground: true,
   hideCaptionsOverlay: false,
   openRouterApiKey: '',

@@ -8,15 +8,17 @@ export interface OpenRouterModel {
   /** Provider display name as OpenRouter labels it, e.g. "Anthropic". */
   providerName: string;
   context_length: number | null;
-  pricing: { prompt: string; completion: string };
+  pricing: { prompt: string; completion: string; audio?: string };
+  /** e.g. ["text", "image", "audio"]. */
+  inputModalities: string[];
 }
 
 interface RawModel {
   id: string;
   name: string;
   context_length?: number | null;
-  pricing: { prompt: string; completion: string };
-  architecture?: { output_modalities?: string[] };
+  pricing: { prompt: string; completion: string; audio?: string };
+  architecture?: { input_modalities?: string[]; output_modalities?: string[] };
 }
 
 export interface ChatTurn {
@@ -40,7 +42,15 @@ export async function listModels(signal?: AbortSignal): Promise<OpenRouterModel[
       const sep = m.name.indexOf(': ');
       const providerName = sep > 0 ? m.name.slice(0, sep) : providerSlug;
       const name = sep > 0 ? m.name.slice(sep + 2) : m.name;
-      return { id: m.id, name, providerSlug, providerName, context_length: m.context_length ?? null, pricing: m.pricing };
+      return {
+        id: m.id,
+        name,
+        providerSlug,
+        providerName,
+        context_length: m.context_length ?? null,
+        pricing: m.pricing,
+        inputModalities: m.architecture?.input_modalities ?? ['text'],
+      };
     })
     .sort((a, b) => a.providerName.localeCompare(b.providerName) || a.name.localeCompare(b.name));
 }
@@ -106,6 +116,58 @@ export async function streamChat({ apiKey, model, messages, signal, onDelta }: S
     }
   }
   return full;
+}
+
+export const acceptsAudio = (model: OpenRouterModel): boolean => model.inputModalities.includes('audio');
+
+const TRANSCRIBE_PROMPT = [
+  'Transcribe the speech in this audio verbatim, in its original language.',
+  'Return only the transcript as plain text: no speaker labels, timestamps, quotes or commentary.',
+  'If there is no intelligible speech, return an empty response.',
+].join(' ');
+
+const NO_SPEECH_RE = /^\W*(?:there (?:is|was) no|no (?:intelligible |audible )?speech|the audio (?:is|contains|has) (?:silent|no|only)|\[?(?:silence|no speech|inaudible)\]?)/i;
+
+export interface TranscribeOptions {
+  apiKey: string;
+  model: string;
+  /** 16-bit PCM WAV, base64. */
+  wavBase64: string;
+  signal?: AbortSignal;
+}
+
+/** Transcribes one audio chunk with an audio-capable chat model. Resolves to '' when nothing was said. */
+export async function transcribeAudio({ apiKey, model, wavBase64, signal }: TranscribeOptions): Promise<string> {
+  const res = await fetch(`${BASE}/chat/completions`, {
+    method: 'POST',
+    signal,
+    headers: { ...appHeaders, Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: TRANSCRIBE_PROMPT },
+            { type: 'input_audio', input_audio: { data: wavBase64, format: 'wav' } },
+          ],
+        },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(parseErrorMessage(detail) ?? `OpenRouter transcription failed (${res.status})`);
+  }
+  const json = (await res.json()) as {
+    choices?: { message?: { content?: string | { type: string; text?: string }[] | null } }[];
+    error?: { message?: string };
+  };
+  if (json.error) throw new Error(json.error.message ?? 'OpenRouter transcription error');
+  const content = json.choices?.[0]?.message?.content;
+  const text = (typeof content === 'string' ? content : (content ?? []).map((p) => p.text ?? '').join('')).trim().replace(/^["“]|["”]$/g, '');
+  return NO_SPEECH_RE.test(text) ? '' : text;
 }
 
 function parseErrorMessage(body: string): string | null {

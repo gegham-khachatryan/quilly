@@ -49,6 +49,7 @@ function systemPrompt(session: Session, entries: TranscriptEntry[]): string {
   return [
     'You are an assistant helping the user work with a transcript of a Google Meet call.',
     'The transcript was captured from live captions, so expect minor transcription errors, missing punctuation and merged sentences.',
+    'When the transcript was produced from audio, speakers are labelled only as "You" (the user) and "Participants" (everyone else).',
     'Lines starting with ✋ are hand raises and lines of the form "Name reacted 👍" are emoji reactions; use them as signals of agreement, questions or engagement.',
     'Answer based on the transcript. If something is not in it, say so rather than guessing. Use Markdown.',
     '',

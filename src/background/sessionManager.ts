@@ -41,6 +41,30 @@ export async function isAutoStartSuppressed(tabId: number): Promise<boolean> {
   return Boolean((await readSuppressed())[tabId]);
 }
 
+/** Per-session capture problems surfaced in the UI (e.g. transcription failures). */
+const ISSUES_KEY = 'captureIssues';
+type IssuesMap = Record<string, string>; // sessionId -> message
+
+async function readIssues(): Promise<IssuesMap> {
+  return ((await chrome.storage.session.get(ISSUES_KEY))[ISSUES_KEY] as IssuesMap | undefined) ?? {};
+}
+
+export async function setIssue(sessionId: string, message: string): Promise<void> {
+  const issues = await readIssues();
+  if (issues[sessionId] === message) return;
+  issues[sessionId] = message;
+  await chrome.storage.session.set({ [ISSUES_KEY]: issues });
+  broadcast({ type: 'sessions/changed', sessionId });
+}
+
+export async function clearIssue(sessionId: string): Promise<void> {
+  const issues = await readIssues();
+  if (!(sessionId in issues)) return;
+  delete issues[sessionId];
+  await chrome.storage.session.set({ [ISSUES_KEY]: issues });
+  broadcast({ type: 'sessions/changed', sessionId });
+}
+
 export async function getActiveSession(tabId: number): Promise<Session | null> {
   const sessionId = (await readActive())[tabId];
   if (!sessionId) return null;
@@ -49,10 +73,10 @@ export async function getActiveSession(tabId: number): Promise<Session | null> {
 
 /** Every recording in progress, regardless of which tab or window is focused. */
 export async function listActiveRecordings(): Promise<ActiveRecording[]> {
-  const active = await readActive();
+  const [active, issues] = await Promise.all([readActive(), readIssues()]);
   const sessions = await Promise.all(Object.values(active).map((id) => sessionsRepo.get(id)));
   return Object.keys(active)
-    .map((tabId, i) => ({ tabId: Number(tabId), session: sessions[i] }))
+    .map((tabId, i) => ({ tabId: Number(tabId), session: sessions[i], issue: sessions[i] ? issues[sessions[i]!.id] ?? null : null }))
     .filter((r): r is ActiveRecording => r.session !== undefined)
     .sort((a, b) => b.session.startedAt - a.session.startedAt);
 }
@@ -135,6 +159,7 @@ async function finalizeSession(sessionId: string): Promise<Session | null> {
     speakers: Array.from(new Set(captions.map((e) => e.speaker))),
   };
   await sessionsRepo.put(completed);
+  await clearIssue(sessionId);
   broadcast({ type: 'sessions/changed', sessionId });
   return completed;
 }
@@ -150,11 +175,20 @@ function enqueue(sessionId: string, task: () => Promise<void>): Promise<void> {
 
 export async function handleCaption(tabId: number, caption: CaptionUpsert): Promise<void> {
   const sessionId = (await readActive())[tabId];
-  if (!sessionId || !caption.text.trim()) return;
+  if (!sessionId) return;
+  await appendEntry(sessionId, caption);
+}
+
+/**
+ * Inserts or updates one entry. Also accepts entries for a session that has just
+ * completed, since audio transcription finishes after the recording stops.
+ */
+export async function appendEntry(sessionId: string, caption: CaptionUpsert): Promise<void> {
+  if (!caption.text.trim()) return;
 
   await enqueue(sessionId, async () => {
     const session = await sessionsRepo.get(sessionId);
-    if (!session || session.status !== 'recording') return;
+    if (!session) return;
 
     const id = `${sessionId}:${caption.localId}`;
     const existing = await entriesRepo.get(id);
@@ -179,6 +213,7 @@ export async function handleCaption(tabId: number, caption: CaptionUpsert): Prom
         entryCount: session.entryCount + (!existing && isCaption ? 1 : 0),
         eventCount: session.eventCount + (!existing && !isCaption ? 1 : 0),
         speakers,
+        endedAt: session.status === 'completed' && session.endedAt !== null ? Math.max(session.endedAt, now) : session.endedAt,
       });
     }
   });
