@@ -91,8 +91,10 @@ class MeetController {
     if (this.captions.isRunning) return;
     this.captions.start();
     this.events.start();
-    ensureCaptionsOn();
-    this.captionsEnforcer = window.setInterval(() => ensureCaptionsOn(), CAPTIONS_ENFORCE_MS);
+    this.captionsEnabledByUs = ensureCaptionsOn() === 'off';
+    this.sawCaptionsOn = false;
+    this.captionsEnforcer = window.setInterval(() => this.enforceCaptions(), CAPTIONS_ENFORCE_MS);
+    this.guard.attach();
     this.applyCaptureEffects();
     this.lastReported = null;
   }
