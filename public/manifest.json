@@ -3,6 +3,8 @@
   "name": "Quilly – transcripts for Google Meet",
   "short_name": "Quilly",
   "version": "0.1.0",
+  "homepage_url": "https://github.com/gegham/quilly",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxQ6/lss1VjDZyx2gqdSmUa2UNw65r9D/sGydJBM8L4QxWHCA5Vm7sDWc7z3nYENCEBdCI2vfJdAB8VM1GHRuVnVhuqnqEXqXUdpY3UCho/olPd8cG8OqtIbuokrAEg9lXEBOdJNO6E2xEs007GXhT+c+p/7WFSaHajAwyZo8cDI7HeYwKSFuxh6JBGu2LIOjAgITi6Q9Ud/0de92XZJWFIOQF/l4/lkCKUrH3+j8YVJL/blOLB5+R6oFLesndQy+9nf/c576DH4hn2nfII9jfvMltbpk1hGTfw1CFhIz1ZBymwA4b4nH7W+PYBmbBRckqmYAyZg0SWRK8msISqE55wIDAQAB",
   "description": "Transcripts for Google Meet: records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
   "minimum_chrome_version": "116",
   "permissions": [
