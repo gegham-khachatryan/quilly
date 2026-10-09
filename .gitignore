@@ -3,3 +3,6 @@ dist/
 public/icons/
 *.log
 .DS_Store
+release/
+store/out/
+*.pem

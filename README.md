@@ -44,6 +44,23 @@ After code changes run `npm run build` again and press the reload icon on the ex
 | `npm run typecheck` | `tsc --noEmit`                                                 |
 | `npm run check`     | typecheck then build                                           |
 
+## Release
+
+```sh
+npm version patch        # bumps package.json and public/manifest.json together, commits and tags
+npm run release          # typecheck + build + release/quilly-v<version>.zip
+npm run store-assets     # promo tile + marquee PNGs in store/out/ (headless Chrome)
+git push --follow-tags   # CI builds the zip and attaches it to a GitHub release
+```
+
+Upload the zip in the Chrome Web Store developer dashboard. Listing copy, permission justifications and
+data-use answers are in `store/listing.md`; the privacy policy is published from `docs/` via GitHub
+Pages (`https://gegham.github.io/quilly/privacy`).
+
+The manifest carries a public `key`, so the extension ID is the same for the unpacked build, the zip
+and the store listing. The matching private key lives outside the repo at `~/.config/quilly/quilly.pem`
+and is only needed if you ever pack a `.crx` yourself; the Web Store does not need it.
+
 ## Architecture
 
 ```
