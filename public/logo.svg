@@ -11,11 +11,14 @@
   </defs>
   <rect width="128" height="128" rx="28" fill="url(#bg)"/>
   <rect width="128" height="64" rx="28" fill="url(#sheen)"/>
-  <g stroke="#fff" stroke-width="11" stroke-linecap="round" opacity=".96">
-    <line x1="28" y1="50" x2="28" y2="78"/>
-    <line x1="46" y1="38" x2="46" y2="90"/>
-    <line x1="64" y1="28" x2="64" y2="100"/>
-    <line x1="82" y1="38" x2="82" y2="90"/>
-    <line x1="100" y1="50" x2="100" y2="78"/>
-  </g>
+  <!-- feather: two curves meeting at the tip (top right) and the nib (bottom left) -->
+  <path d="M38 94 C 34 60, 58 32, 102 22 C 94 62, 72 86, 38 94 Z" fill="#fff" opacity=".97"/>
+  <!-- shaft, cut out of the vane -->
+  <path d="M40 92 C 56 70, 74 50, 100 24" fill="none" stroke="url(#bg)" stroke-width="5" stroke-linecap="round"/>
+  <!-- barbs, cut out of the lower vane -->
+  <path d="M58 72 L 66 84 M70 58 L 80 68" fill="none" stroke="url(#bg)" stroke-width="4" stroke-linecap="round"/>
+  <!-- quill below the vane, ending in the nib -->
+  <path d="M40 92 L 26 108" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round"/>
+  <!-- the written line -->
+  <path d="M46 108 H 86" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".9"/>
 </svg>

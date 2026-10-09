@@ -40,7 +40,8 @@ After code changes run `npm run build` again and press the reload icon on the ex
 
 | Command             | Purpose                                                        |
 | ------------------- | -------------------------------------------------------------- |
-| `npm run build`     | Icons + pages/service worker (ESM) + content script (IIFE)      |
+| `npm run build`     | Pages/service worker (ESM) + content script (IIFE)              |
+| `npm run icons`     | Re-render `public/icons/*.png` from the SVGs (headless Chrome)  |
 | `npm run typecheck` | `tsc --noEmit`                                                 |
 | `npm run check`     | typecheck then build                                           |
 
