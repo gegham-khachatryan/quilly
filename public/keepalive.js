@@ -14,6 +14,12 @@
 //
 // With the flag absent everything behaves natively.
 (() => {
+  // Installed once per page. The background re-injects this file into Meet tabs
+  // that were open before Quilly was installed or updated; a second run must not
+  // wrap the already patched APIs again.
+  if (window.__quillyKeepalive) return;
+  window.__quillyKeepalive = true;
+
   const FLAG = 'quillyKeepalive';
   const FRAME_MS = 16;
   const active = () => document.documentElement.dataset[FLAG] === '1';

@@ -15,3 +15,4 @@ All notable changes to Quilly are documented here. The format follows
 - "Ask AI" panel using OpenRouter (streaming, model picker, presets for summary, action items, decisions, follow-up email). Resizable.
 - Background-tab capture: keeps Meet rendering captions while the tab is hidden; optional invisible caption overlay.
 - Toolbar icon switches to a red dot while recording.
+- Meet tabs open at install or update time are connected automatically; no page reload needed to start recording.

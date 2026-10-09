@@ -46,7 +46,9 @@ export function RecordingControls({
     : !state?.isMeet
       ? 'Open a Google Meet tab to record.'
       : !state.meet
-        ? 'Meet page is loading…'
+        ? state.pageLoading
+          ? 'Meet page is loading…'
+          : 'Can’t reach this Meet tab. Reload the page to connect.'
         : state.meet.inCall
           ? state.autoStartSuppressed
             ? 'Stopped. Auto-start is paused until this call ends.'

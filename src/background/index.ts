@@ -1,5 +1,6 @@
 import { errorEnvelope, type ContentMessage, type UiMessage, type UiResponse } from '../shared/messages';
 import type { TabRecordingState } from '../shared/types';
+import { forgetTab, getMeetState, injectIntoOpenMeetTabs } from './contentScripts';
 import {
   flashBadge,
   focusTab,
@@ -28,7 +29,14 @@ chrome.runtime.onMessage.addListener((message: Inbound, sender, sendResponse) =>
   return true;
 });
 
+// Meet tabs open at install/update time have no live content script until
+// one is injected; without this, "Start recording" cannot reach them.
+chrome.runtime.onInstalled.addListener(() => {
+  void injectIntoOpenMeetTabs();
+});
+
 chrome.tabs.onRemoved.addListener((tabId) => {
+  forgetTab(tabId);
   void handleTabClosed(tabId);
 });
 
@@ -81,8 +89,14 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
 async function getTabState(tabId: number): Promise<TabRecordingState> {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   const isMeet = Boolean(tab?.url?.startsWith(MEET_ORIGIN));
-  const meet = isMeet
-    ? await chrome.tabs.sendMessage(tabId, { type: 'meet/getState' }).catch(() => null)
-    : null;
-  return { tabId, isMeet, meet, session: await getActiveSession(tabId), autoStartSuppressed: await isAutoStartSuppressed(tabId) };
+  const pageLoading = isMeet && tab?.status !== 'complete';
+  const meet = isMeet ? await getMeetState(tabId) : null;
+  return {
+    tabId,
+    isMeet,
+    pageLoading,
+    meet,
+    session: await getActiveSession(tabId),
+    autoStartSuppressed: await isAutoStartSuppressed(tabId),
+  };
 }

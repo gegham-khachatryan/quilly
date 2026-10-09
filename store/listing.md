@@ -61,6 +61,7 @@ Generate with `npm run store-assets` (renders the SVGs in `store/` with headless
 - `storage` – persist settings, sessions, transcripts and AI chats in the browser.
 - `unlimitedStorage` – transcripts of long meetings and many sessions exceed the default quota.
 - `sidePanel` – show the live transcript in Chrome's side panel.
+- `scripting` – inject the bundled content script into Meet tabs that were open before install/update, so recording works without a page reload. Only targets `https://meet.google.com/*`; no remote code.
 - Host `https://meet.google.com/*` – content script reads the captions region, switches captions on, detects call state.
 - Host `https://openrouter.ai/*` – calls the OpenRouter API with the user's own key when the user uses AI features.
 

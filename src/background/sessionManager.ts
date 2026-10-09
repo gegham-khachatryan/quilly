@@ -2,6 +2,7 @@ import { entriesRepo, sessionsRepo } from '../shared/db';
 import { newId } from '../shared/format';
 import { broadcast, sendToTab } from '../shared/messages';
 import { getSettings } from '../shared/settings';
+import { getMeetState } from './contentScripts';
 import type { ActiveRecording, CaptionUpsert, MeetState, Session } from '../shared/types';
 
 /**
@@ -63,14 +64,6 @@ export async function focusTab(tabId: number): Promise<void> {
   if (tab?.windowId !== undefined) await chrome.windows.update(tab.windowId, { focused: true });
 }
 
-async function queryMeetState(tabId: number): Promise<MeetState | null> {
-  try {
-    return await sendToTab<MeetState>(tabId, { type: 'meet/getState' });
-  } catch {
-    return null;
-  }
-}
-
 export async function startRecording(tabId: number, known?: MeetState): Promise<Session> {
   const existing = await getActiveSession(tabId);
   if (existing) {
@@ -78,7 +71,7 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
     return existing;
   }
 
-  const meet = known ?? (await queryMeetState(tabId));
+  const meet = known ?? (await getMeetState(tabId));
   if (!meet) throw new Error('This tab is not a Google Meet call (content script unavailable).');
   if (!meet.inCall) throw new Error('Join the meeting first, then start recording.');
   if (!known) await setSuppressed(tabId, false); // explicit user start re-arms auto-start

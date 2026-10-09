@@ -87,6 +87,9 @@ export interface ActiveRecording {
 export interface TabRecordingState {
   tabId: number;
   isMeet: boolean;
+  /** The Meet tab is still loading, so the content script may not be ready yet. */
+  pageLoading: boolean;
+  /** Null when the content script in the tab could not be reached. */
   meet: MeetState | null;
   session: Session | null;
   /** User stopped recording during this call, so auto-start is paused until the call ends. */
