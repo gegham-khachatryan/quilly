@@ -77,6 +77,7 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
     status: 'recording',
     speakers: [],
     entryCount: 0,
+    eventCount: 0,
   };
   await sessionsRepo.put(session);
   await writeActive({ ...(await readActive()), [tabId]: session.id });
@@ -108,12 +109,14 @@ async function finalizeSession(sessionId: string): Promise<Session | null> {
   if (!session) return null;
   if (session.status === 'completed') return session;
   const entries = await entriesRepo.list(sessionId);
+  const captions = entries.filter((e) => e.kind === 'caption');
   const completed: Session = {
     ...session,
     status: 'completed',
     endedAt: entries.at(-1)?.updatedAt ?? Date.now(),
-    entryCount: entries.length,
-    speakers: Array.from(new Set(entries.map((e) => e.speaker))),
+    entryCount: captions.length,
+    eventCount: entries.length - captions.length,
+    speakers: Array.from(new Set(captions.map((e) => e.speaker))),
   };
   await sessionsRepo.put(completed);
   broadcast({ type: 'sessions/changed', sessionId });
@@ -143,16 +146,24 @@ export async function handleCaption(tabId: number, caption: CaptionUpsert): Prom
     await entriesRepo.put({
       id,
       sessionId,
-      seq: existing?.seq ?? session.entryCount,
+      seq: existing?.seq ?? session.entryCount + session.eventCount,
+      kind: caption.kind,
       speaker: caption.speaker,
       text: caption.text,
       startedAt: existing?.startedAt ?? caption.startedAt,
       updatedAt: now,
     });
 
-    const speakers = session.speakers.includes(caption.speaker) ? session.speakers : [...session.speakers, caption.speaker];
+    // Only people who spoke count as speakers; reacting or raising a hand does not.
+    const isCaption = caption.kind === 'caption';
+    const speakers = !isCaption || session.speakers.includes(caption.speaker) ? session.speakers : [...session.speakers, caption.speaker];
     if (!existing || speakers !== session.speakers) {
-      await sessionsRepo.put({ ...session, entryCount: existing ? session.entryCount : session.entryCount + 1, speakers });
+      await sessionsRepo.put({
+        ...session,
+        entryCount: session.entryCount + (!existing && isCaption ? 1 : 0),
+        eventCount: session.eventCount + (!existing && !isCaption ? 1 : 0),
+        speakers,
+      });
     }
   });
   broadcast({ type: 'entries/changed', sessionId });

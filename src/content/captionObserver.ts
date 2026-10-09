@@ -114,7 +114,7 @@ export class CaptionObserver {
       tracked.text = parsed.text;
       tracked.speaker = parsed.speaker;
       this.lastEntry = tracked;
-      this.emit({ localId: tracked.localId, speaker: tracked.speaker, text: tracked.text, startedAt: tracked.startedAt });
+      this.emit({ localId: tracked.localId, kind: 'caption', speaker: tracked.speaker, text: tracked.text, startedAt: tracked.startedAt });
     }
   }
 

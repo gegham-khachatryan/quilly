@@ -1,9 +1,25 @@
 import { formatClock } from './format';
 import type { Session, TranscriptEntry } from './types';
 
+/** One line per entry: "Name: text" for captions, "✋ Name raised their hand" / "Name reacted 👍" for events. */
+function entryLine(entry: TranscriptEntry): string {
+  switch (entry.kind) {
+    case 'caption':
+      return `${entry.speaker}: ${entry.text}`;
+    case 'hand':
+      return `✋ ${entry.speaker} ${entry.text}`;
+    case 'reaction':
+      return `${entry.speaker} reacted ${entry.text}`;
+  }
+}
+
 /** Plain-text rendering used for exports and as the AI context. */
 export function transcriptToText(session: Session, entries: TranscriptEntry[]): string {
-  return entries.map((e) => `[${formatClock(e.startedAt - session.startedAt)}] ${e.speaker}: ${e.text}`).join('\n');
+  return entries.map((e) => `[${formatClock(e.startedAt - session.startedAt)}] ${entryLine(e)}`).join('\n');
+}
+
+export function countCaptions(entries: TranscriptEntry[]): number {
+  return entries.reduce((n, e) => n + (e.kind === 'caption' ? 1 : 0), 0);
 }
 
 export function transcriptToMarkdown(session: Session, entries: TranscriptEntry[]): string {
@@ -21,7 +37,10 @@ export function transcriptToMarkdown(session: Session, entries: TranscriptEntry[
     .filter((l): l is string => l !== null)
     .join('\n');
   const body = entries
-    .map((e) => `**${e.speaker}** \`${formatClock(e.startedAt - session.startedAt)}\`  \n${e.text}`)
+    .map((e) => {
+      const clock = `\`${formatClock(e.startedAt - session.startedAt)}\``;
+      return e.kind === 'caption' ? `**${e.speaker}** ${clock}  \n${e.text}` : `_${entryLine(e)}_ ${clock}`;
+    })
     .join('\n\n');
   return `${header}${body}\n`;
 }

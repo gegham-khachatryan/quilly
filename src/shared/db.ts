@@ -25,13 +25,23 @@ function db(): Promise<IDBPDatabase<MeetHunterDB>> {
   return dbPromise;
 }
 
+/** Fields added after the first release default here, so older rows need no migration pass. */
+function normalizeSession(session: Session): Session {
+  return { ...session, eventCount: session.eventCount ?? 0 };
+}
+
+function normalizeEntry(entry: TranscriptEntry): TranscriptEntry {
+  return { ...entry, kind: entry.kind ?? 'caption' };
+}
+
 export const sessionsRepo = {
   async list(): Promise<Session[]> {
     const all = await (await db()).getAllFromIndex('sessions', 'byStartedAt');
-    return all.reverse();
+    return all.reverse().map(normalizeSession);
   },
   async get(id: string): Promise<Session | undefined> {
-    return (await db()).get('sessions', id);
+    const session = await (await db()).get('sessions', id);
+    return session && normalizeSession(session);
   },
   async put(session: Session): Promise<void> {
     await (await db()).put('sessions', session);
@@ -56,10 +66,12 @@ export const sessionsRepo = {
 
 export const entriesRepo = {
   async list(sessionId: string): Promise<TranscriptEntry[]> {
-    return (await db()).getAllFromIndex('entries', 'bySessionSeq', IDBKeyRange.bound([sessionId, 0], [sessionId, Infinity]));
+    const rows = await (await db()).getAllFromIndex('entries', 'bySessionSeq', IDBKeyRange.bound([sessionId, 0], [sessionId, Infinity]));
+    return rows.map(normalizeEntry);
   },
   async get(id: string): Promise<TranscriptEntry | undefined> {
-    return (await db()).get('entries', id);
+    const entry = await (await db()).get('entries', id);
+    return entry && normalizeEntry(entry);
   },
   async put(entry: TranscriptEntry): Promise<void> {
     await (await db()).put('entries', entry);

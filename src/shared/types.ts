@@ -8,16 +8,27 @@ export interface Session {
   startedAt: number;
   endedAt: number | null;
   status: SessionStatus;
-  /** Distinct speaker names, kept in sync as entries arrive. */
+  /** Distinct speaker names (caption authors), kept in sync as entries arrive. */
   speakers: string[];
+  /** Number of caption entries. */
   entryCount: number;
+  /** Number of non-caption entries (hand raises, reactions). */
+  eventCount: number;
 }
+
+/**
+ * - caption: spoken text from Meet's captions panel (text grows while the block is live).
+ * - hand: `text` is "raised their hand" | "lowered their hand".
+ * - reaction: `text` is the emoji.
+ */
+export type EntryKind = 'caption' | 'hand' | 'reaction';
 
 export interface TranscriptEntry {
   /** `${sessionId}:${localId}` — stable across live updates of the same caption block. */
   id: string;
   sessionId: string;
   seq: number;
+  kind: EntryKind;
   speaker: string;
   text: string;
   startedAt: number;
@@ -54,12 +65,19 @@ export interface MeetState {
   capturing: boolean;
 }
 
-/** A caption block as observed in the Meet DOM; re-sent as its text grows. */
+/** An entry observed in the Meet DOM; captions are re-sent as their text grows. */
 export interface CaptionUpsert {
   localId: string;
+  kind: EntryKind;
   speaker: string;
   text: string;
   startedAt: number;
+}
+
+/** A recording in progress, with the tab it is bound to. */
+export interface ActiveRecording {
+  tabId: number;
+  session: Session;
 }
 
 export interface TabRecordingState {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { formatDateTime, formatDuration, formatRelative, pluralize } from '../shared/format';
+import { countCaptions } from '../shared/transcript';
 import type { Session } from '../shared/types';
 import { Empty, TranscriptList } from '../ui/components';
 import { openAppPage, useCurrentTabId, useEntries, useSessions, useStickToBottom, useTabState } from '../ui/hooks';
@@ -67,7 +68,7 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: boo
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{session.title}</span>
           <span className="block text-muted" title={formatDateTime(session.startedAt)}>
-            {pluralize(entries.length, 'caption')} · {formatDuration(session.startedAt, session.endedAt)}
+            {pluralize(countCaptions(entries), 'caption')} · {formatDuration(session.startedAt, session.endedAt)}
           </span>
         </span>
         <button

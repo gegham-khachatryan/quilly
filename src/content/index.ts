@@ -1,16 +1,16 @@
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
 import { getSettings, onSettingsChange } from '../shared/settings';
-import type { MeetState, Settings } from '../shared/types';
+import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
+import { MeetEventObserver } from './eventObserver';
 import { ensureCaptionsOn, getMeetingCode, getMeetingTitle, isInCall, setCaptionsOverlayHidden, setKeepAlive } from './meetDom';
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
 
 class MeetController {
-  private readonly captions = new CaptionObserver((entry) => {
-    sendFromContent({ type: 'caption/upsert', entry }).catch(() => undefined);
-  });
+  private readonly captions = new CaptionObserver((entry) => this.send(entry));
+  private readonly events = new MeetEventObserver((entry) => this.send(entry));
   private lastReported: string | null = null;
   private captionsEnforcer: number | null = null;
   private settings: Settings | null = null;
@@ -65,9 +65,14 @@ class MeetController {
     if (!state.inCall && this.captions.isRunning) this.stopCapture();
   }
 
+  private send(entry: CaptionUpsert): void {
+    sendFromContent({ type: 'caption/upsert', entry }).catch(() => undefined);
+  }
+
   private startCapture(): void {
     if (this.captions.isRunning) return;
     this.captions.start();
+    this.events.start();
     ensureCaptionsOn();
     this.captionsEnforcer = window.setInterval(() => ensureCaptionsOn(), CAPTIONS_ENFORCE_MS);
     this.applyCaptureEffects();
@@ -76,6 +81,7 @@ class MeetController {
 
   private stopCapture(): void {
     this.captions.stop();
+    this.events.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
     this.captionsEnforcer = null;
     this.applyCaptureEffects();

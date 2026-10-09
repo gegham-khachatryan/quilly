@@ -78,27 +78,43 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
   );
 }
 
-/** Consecutive entries from the same speaker within a short gap are shown as one turn. */
+/** Consecutive captions from the same speaker within a short gap are shown as one turn. */
 const GROUP_GAP_MS = 90_000;
 
 interface Turn {
+  type: 'turn';
   speaker: string;
   startedAt: number;
   entries: TranscriptEntry[];
 }
 
-function groupTurns(entries: TranscriptEntry[]): Turn[] {
-  const turns: Turn[] = [];
+interface EventItem {
+  type: 'event';
+  entry: TranscriptEntry;
+}
+
+type ListItem = Turn | EventItem;
+
+function groupItems(entries: TranscriptEntry[]): ListItem[] {
+  const items: ListItem[] = [];
   for (const entry of entries) {
-    const last = turns.at(-1);
-    const lastEntry = last?.entries.at(-1);
-    if (last && lastEntry && last.speaker === entry.speaker && entry.startedAt - lastEntry.startedAt < GROUP_GAP_MS) {
+    if (entry.kind !== 'caption') {
+      items.push({ type: 'event', entry });
+      continue;
+    }
+    const last = items.at(-1);
+    const lastEntry = last?.type === 'turn' ? last.entries.at(-1) : undefined;
+    if (last?.type === 'turn' && lastEntry && last.speaker === entry.speaker && entry.startedAt - lastEntry.startedAt < GROUP_GAP_MS) {
       last.entries.push(entry);
     } else {
-      turns.push({ speaker: entry.speaker, startedAt: entry.startedAt, entries: [entry] });
+      items.push({ type: 'turn', speaker: entry.speaker, startedAt: entry.startedAt, entries: [entry] });
     }
   }
-  return turns;
+  return items;
+}
+
+export function describeEvent(entry: TranscriptEntry): string {
+  return entry.kind === 'reaction' ? `reacted ${entry.text}` : entry.text;
 }
 
 export function TranscriptList({
@@ -113,33 +129,60 @@ export function TranscriptList({
   highlight?: string;
 }) {
   if (entries.length === 0) return <Empty title="No captions yet">Captions appear here as people speak.</Empty>;
-  const turns = groupTurns(entries);
+  const items = groupItems(entries);
   return (
     <ol className={compact ? 'space-y-3' : 'space-y-5'}>
-      {turns.map((turn) => {
-        const style = speakerStyle(turn.speaker);
-        return (
-          <li key={turn.entries[0]!.id} className="flex gap-3">
-            <Avatar name={turn.speaker} size={compact ? 'sm' : 'md'} />
-            <div className="min-w-0 flex-1">
-              <div className="mb-1 flex items-baseline gap-2">
-                <span className={`truncate text-xs font-semibold ${style.text}`}>{turn.speaker}</span>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted" title={formatTime(turn.startedAt)}>
-                  {formatClock(turn.startedAt - startedAt)}
-                </span>
-              </div>
-              <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
-                {turn.entries.map((entry) => (
-                  <p key={entry.id} className={`${compact ? 'text-[13px]' : 'text-[15px]'} leading-relaxed text-fg/90`} title={formatClock(entry.startedAt - startedAt)}>
-                    <Highlighted text={entry.text} query={highlight} />
-                  </p>
-                ))}
-              </div>
-            </div>
-          </li>
-        );
-      })}
+      {items.map((item) =>
+        item.type === 'event' ? (
+          <EventRow key={item.entry.id} entry={item.entry} startedAt={startedAt} compact={compact} />
+        ) : (
+          <TurnRow key={item.entries[0]!.id} turn={item} startedAt={startedAt} compact={compact} highlight={highlight} />
+        ),
+      )}
     </ol>
+  );
+}
+
+function TurnRow({ turn, startedAt, compact, highlight }: { turn: Turn; startedAt: number; compact: boolean; highlight?: string }) {
+  const style = speakerStyle(turn.speaker);
+  return (
+    <li className="flex gap-3">
+      <Avatar name={turn.speaker} size={compact ? 'sm' : 'md'} />
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-baseline gap-2">
+          <span className={`truncate text-xs font-semibold ${style.text}`}>{turn.speaker}</span>
+          <span className="shrink-0 text-[11px] tabular-nums text-muted" title={formatTime(turn.startedAt)}>
+            {formatClock(turn.startedAt - startedAt)}
+          </span>
+        </div>
+        <div className={compact ? 'space-y-1' : 'space-y-1.5'}>
+          {turn.entries.map((entry) => (
+            <p key={entry.id} className={`${compact ? 'text-[13px]' : 'text-[15px]'} leading-relaxed text-fg/90`} title={formatClock(entry.startedAt - startedAt)}>
+              <Highlighted text={entry.text} query={highlight} />
+            </p>
+          ))}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+/** Hand raises and reactions: a quiet single line in the flow, aligned with the caption text. */
+function EventRow({ entry, startedAt, compact }: { entry: TranscriptEntry; startedAt: number; compact: boolean }) {
+  const style = speakerStyle(entry.speaker);
+  const icon = entry.kind === 'reaction' ? entry.text : '✋';
+  return (
+    <li className={`flex items-center gap-3 ${compact ? 'text-xs' : 'text-[13px]'}`}>
+      <span className={`flex shrink-0 items-center justify-center ${compact ? 'h-6 w-6 text-sm' : 'h-8 w-8 text-lg'}`} aria-hidden>
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-muted">
+        <span className={`font-semibold ${style.text}`}>{entry.speaker}</span> {describeEvent(entry)}
+      </span>
+      <span className="shrink-0 text-[11px] tabular-nums text-muted" title={formatTime(entry.startedAt)}>
+        {formatClock(entry.startedAt - startedAt)}
+      </span>
+    </li>
   );
 }
 

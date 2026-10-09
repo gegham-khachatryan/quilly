@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
 import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
-import { downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
+import { countCaptions, downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
 import { Empty, ParticipantsStack, StatusBadge, TranscriptList } from '../../ui/components';
 import { EditableTitle } from '../../ui/EditableTitle';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';
@@ -68,7 +68,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
                   <Dot />
                   <span>{formatDuration(session.startedAt, session.endedAt)}</span>
                   <Dot />
-                  <span>{pluralize(entries.length, 'caption')}</span>
+                  <span>{pluralize(countCaptions(entries), 'caption')}</span>
                   <Dot />
                   <code className="rounded bg-panel-2 px-1.5 py-0.5 font-mono text-[11px] text-fg/80">{session.meetingCode}</code>
                 </div>

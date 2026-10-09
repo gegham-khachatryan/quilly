@@ -138,3 +138,97 @@ function collectText(root: Node, exclude: Node): string {
   for (const child of Array.from(root.childNodes)) out += `${collectText(child, exclude)} `;
   return out;
 }
+
+// ---- hand raises & reactions ------------------------------------------------
+
+export type MeetEventKind = 'hand' | 'reaction';
+
+export interface ParsedMeetEvent {
+  kind: MeetEventKind;
+  speaker: string;
+  /** hand: "raised their hand" | "lowered their hand"; reaction: the emoji. */
+  text: string;
+}
+
+const HAND_RE = /^(.{1,60}?)\s+(raised|lowered)\s+(?:their|his|her|a)\s+hands?\b/i;
+const OWN_HAND_RE = /^(?:you\s+(raised|lowered)\s+your\s+hand|your\s+hand\s+is\s+(raised|lowered))\b/i;
+const HEADCOUNT_RE = /^\d+\s+(?:people|participants|others)\b/i;
+const EMOJI_SEQ = '\\p{Extended_Pictographic}(?:\\uFE0F|\\u200D\\p{Extended_Pictographic}|\\p{Emoji_Modifier})*';
+const EMOJI_EDGE_RE = new RegExp(`^(?:(${EMOJI_SEQ})\\s*(.+)|(.+?)\\s*(${EMOJI_SEQ}))$`, 'u');
+const NOTO_EMOJI_PATH_RE = /notoemoji\/[^/]+\/([0-9a-f]{2,6}(?:_[0-9a-f]{2,6})*)\//i;
+const MAX_EVENT_TEXT = 120;
+
+/**
+ * Interprets a DOM node Meet just added or changed as a hand raise or an emoji
+ * reaction. Both surface as transient toasts / floating bubbles outside the
+ * captions region: "Name raised their hand", or an emoji (text or Noto image)
+ * next to the sender's name.
+ */
+export function parseMeetEvent(node: Node): ParsedMeetEvent | null {
+  const el = node.nodeType === Node.ELEMENT_NODE ? (node as Element) : node.parentElement;
+  if (!el || el.closest(CAPTION_CONTAINER_SELECTORS.join(','))) return null;
+  const text = normalizeText(el.textContent);
+  if (!text || text.length > MAX_EVENT_TEXT) return null;
+  return parseHandEvent(el, text) ?? parseReaction(el, text);
+}
+
+function parseHandEvent(el: Element, text: string): ParsedMeetEvent | null {
+  const own = OWN_HAND_RE.exec(text);
+  if (own) return { kind: 'hand', speaker: 'You', text: `${(own[1] ?? own[2] ?? 'raised').toLowerCase()} their hand` };
+  if (!HAND_RE.test(text)) return null;
+  // Descend to the tightest element still containing the phrase, so a wrapping
+  // toast region does not prepend unrelated text to the name.
+  const match = HAND_RE.exec(normalizeText(tightest(el, (t) => HAND_RE.test(t)).textContent));
+  if (!match) return null;
+  const speaker = match[1]!.trim();
+  if (!speaker || HEADCOUNT_RE.test(speaker)) return null;
+  return { kind: 'hand', speaker, text: `${match[2]!.toLowerCase()} their hand` };
+}
+
+function parseReaction(el: Element, text: string): ParsedMeetEvent | null {
+  const fromImage = emojiFromImage(el);
+  if (fromImage) {
+    const speaker = text; // the only text next to an emoji image is the sender's label
+    return isPlausibleName(speaker) ? { kind: 'reaction', speaker, text: fromImage } : null;
+  }
+  const edge = EMOJI_EDGE_RE.exec(text);
+  if (!edge) return null;
+  const emoji = (edge[1] ?? edge[4])!;
+  const speaker = (edge[2] ?? edge[3])!.trim();
+  return isPlausibleName(speaker) ? { kind: 'reaction', speaker, text: emoji } : null;
+}
+
+/** Meet renders reaction emoji as Noto images; the code points are in the URL path. */
+function emojiFromImage(el: Element): string | null {
+  const images = el.querySelectorAll('img');
+  if (images.length !== 1) return null;
+  const img = images[0]!;
+  const alt = img.getAttribute('alt')?.trim() ?? '';
+  if (alt && new RegExp(`^${EMOJI_SEQ}$`, 'u').test(alt)) return alt;
+  const codepoints = NOTO_EMOJI_PATH_RE.exec(img.getAttribute('src') ?? '')?.[1];
+  if (!codepoints) return null;
+  try {
+    return String.fromCodePoint(...codepoints.split('_').map((h) => parseInt(h, 16)));
+  } catch {
+    return null;
+  }
+}
+
+/** A display name: short, a few words, no digits or sentence punctuation. */
+function isPlausibleName(value: string): boolean {
+  return value.length > 0 && value.length <= 40 && value.split(/\s+/).length <= 4 && !/[\d.!?,:;@#]/.test(value);
+}
+
+function tightest(el: Element, test: (text: string) => boolean): Element {
+  let current = el;
+  for (let depth = 0; depth < 12; depth++) {
+    const next = Array.from(current.children).find((child) => test(normalizeText(child.textContent)));
+    if (!next) return current;
+    current = next;
+  }
+  return current;
+}
+
+function normalizeText(value: string | null | undefined): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim();
+}
