@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { sessionsRepo } from '../../shared/db';
 import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
 import { countCaptions, downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
@@ -7,8 +7,13 @@ import { EditableTitle } from '../../ui/EditableTitle';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';
 import { CheckIcon, CodeIcon, CopyIcon, DownloadIcon, FileTextIcon, MarkdownIcon, SearchIcon, TrashIcon } from '../../ui/icons';
 import { Menu } from '../../ui/Menu';
+import { ResizeHandle, useStoredWidth } from '../../ui/ResizeHandle';
 import { AiPanel } from '../components/AiPanel';
 import { navigate } from '../router';
+
+const AI_PANEL_DEFAULT = 420;
+const AI_PANEL_MIN = 320;
+const AI_PANEL_MAX = 900;
 
 export function SessionDetailPage({ sessionId }: { sessionId: string }) {
   const [session] = useSession(sessionId);
@@ -17,6 +22,8 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
   const [copied, setCopied] = useState(false);
   const live = session?.status === 'recording';
   const scrollRef = useStickToBottom<HTMLDivElement>(live ? entries.at(-1)?.updatedAt : null);
+  const [aiWidth, setAiWidth, resetAiWidth] = useStoredWidth('ui.aiPanelWidth', AI_PANEL_DEFAULT, AI_PANEL_MIN, AI_PANEL_MAX);
+  const asideRef = useRef<HTMLElement>(null);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,7 +59,7 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
   };
 
   return (
-    <div className="grid h-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_420px]">
+    <div className="grid h-full grid-cols-1 lg:grid-cols-[minmax(0,1fr)_var(--ai-w)]" style={{ '--ai-w': `${aiWidth}px` } as CSSProperties}>
       <section className="flex min-h-0 flex-col">
         {/* Header */}
         <header className="border-b border-line bg-panel/60 backdrop-blur">
@@ -130,7 +137,15 @@ export function SessionDetailPage({ sessionId }: { sessionId: string }) {
         </div>
       </section>
 
-      <aside className="min-h-0 border-l border-line bg-panel">
+      <aside ref={asideRef} className="relative min-h-0 border-l border-line bg-panel">
+        <ResizeHandle
+          label="Resize AI panel"
+          onDrag={(clientX) => {
+            const right = asideRef.current?.getBoundingClientRect().right ?? window.innerWidth;
+            setAiWidth(Math.min(right - clientX, window.innerWidth * 0.6));
+          }}
+          onReset={resetAiWidth}
+        />
         <AiPanel session={session} entries={entries} />
       </aside>
     </div>
