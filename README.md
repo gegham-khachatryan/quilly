@@ -17,7 +17,7 @@ export transcripts or iterate on them with AI through OpenRouter.
   offers a way back to the list of recent sessions, and lets you reopen the live one at any time.
 - **Background tabs.** Meet pauses caption rendering when its tab is hidden. While recording, a
   main-world shim (`keepalive.js`) reports the tab as visible so captions keep flowing. Can be turned
-  off in Settings. Optionally the caption overlay can be hidden while still being captured.
+  off in Settings. The caption overlay is hidden by default while recording (captions are still captured); turn that off in Settings to see them.
 - **Keyboard shortcut.** `Alt+Shift+R` toggles recording on the current Meet tab (change it at `chrome://extensions/shortcuts`).
 - **Sessions.** Everything is stored locally in IndexedDB (no server). Sessions page with search,
   session detail with transcript search, speaker filter, rename, delete.

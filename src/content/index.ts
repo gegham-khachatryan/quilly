@@ -1,5 +1,5 @@
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
-import { getSettings, onSettingsChange } from '../shared/settings';
+import { DEFAULT_SETTINGS, getSettings, onSettingsChange } from '../shared/settings';
 import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
 import { MeetEventObserver } from './eventObserver';
@@ -101,8 +101,9 @@ class MeetController {
   /** Visibility shim and overlay hiding are only active while capturing. */
   private applyCaptureEffects(): void {
     const capturing = this.captions.isRunning;
-    setKeepAlive(capturing && (this.settings?.keepAliveInBackground ?? true));
-    setCaptionsOverlayHidden(capturing && (this.settings?.hideCaptionsOverlay ?? false));
+    const settings = this.settings ?? DEFAULT_SETTINGS;
+    setKeepAlive(capturing && settings.keepAliveInBackground);
+    setCaptionsOverlayHidden(capturing && settings.hideCaptionsOverlay);
   }
 }
 
