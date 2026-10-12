@@ -3,6 +3,11 @@
 All notable changes to Quilly are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow SemVer.
 
+## [0.1.1] – 2026-10-12
+
+### Fixed
+- Hidden caption overlay no longer leaves an empty band above the call controls. Meet reserves the band's height in the stage's inline inset, so the stage now reclaims that space while the band stays invisible in place.
+
 ## [0.1.0] – 2026-10-09
 
 ### Added

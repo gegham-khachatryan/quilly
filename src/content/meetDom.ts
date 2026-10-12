@@ -72,18 +72,27 @@ export function turnCaptionsOff(): void {
 const OVERLAY_STYLE_ID = 'quilly-hide-captions';
 const CAPTIONS_TAG = 'data-quilly-captions';
 const WRAPPER_TAG = 'data-quilly-captions-wrap';
+const STAGE_TAG = 'data-quilly-stage';
+const STAGE_BOTTOM_VAR = '--quilly-stage-bottom';
 const MAX_WRAPPER_DEPTH = 6;
+/** How far the band's top edge may sit from where the stage's inline inset ends. */
+const BAND_EDGE_TOLERANCE_PX = 24;
 
 /**
  * Hides Meet's caption region while keeping it alive for capture.
  *
- * The rule only targets elements tagged at runtime by `tagCaptionsContainer`:
- * the exact element the caption observer reads, plus any ancestor whose only
- * visible content is that region (Meet wraps captions in a band that reserves
- * its own height). Everything is collapsed in place with no fixed geometry, so
- * Meet's flex layout gives the space back and stays consistent across window
- * resizes and participant grid changes. `display:none` is avoided so Meet keeps
- * updating and observing the DOM.
+ * Meet does not lay the call out with flex. The stage (the `<main>` landmark)
+ * is absolutely positioned and Meet writes its inset inline, adding the caption
+ * band's height to the bottom whenever captions are on. Collapsing the band
+ * therefore frees nothing; the stage has to be told to reclaim the space.
+ *
+ * The rule only targets elements tagged at runtime by `tagCaptionsContainer`.
+ * The band (the observed element plus the wrappers that only hold it) is made
+ * invisible in place, with its geometry intact so Meet's own measurements are
+ * unaffected and `display:none` is avoided so Meet keeps updating the DOM.
+ * The stage's bottom inset is overridden with the value `tagCaptionsContainer`
+ * measures: Meet's inset minus the band's height, which is what Meet sets when
+ * captions are off.
  */
 export function setCaptionsOverlayHidden(hidden: boolean): void {
   const existing = document.getElementById(OVERLAY_STYLE_ID);
@@ -95,54 +104,116 @@ export function setCaptionsOverlayHidden(hidden: boolean): void {
   const style = document.createElement('style');
   style.id = OVERLAY_STYLE_ID;
   style.textContent = `[${CAPTIONS_TAG}], [${WRAPPER_TAG}] {
-  height: 0 !important;
-  min-height: 0 !important;
-  max-height: 0 !important;
-  flex-basis: 0 !important;
-  margin: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  border: 0 !important;
-  overflow: hidden !important;
+  visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
+}
+[${STAGE_TAG}] {
+  bottom: var(${STAGE_BOTTOM_VAR}) !important;
 }`;
   document.documentElement.appendChild(style);
 }
 
 /**
- * Marks the live captions container, and the wrappers that exist only to hold
- * it, so the hide rule applies to them and nothing else. Safe to call often.
+ * Marks the live captions container, the wrappers that exist only to hold it,
+ * and the stage that reserves space for them, so the hide rule applies to
+ * those and nothing else. Safe to call often: Meet rewrites the stage's inset
+ * and re-renders wrappers, and the measurements follow.
  */
 export function tagCaptionsContainer(container: HTMLElement | null): void {
-  const wrappers = new Set<Element>();
+  const wrappers: HTMLElement[] = [];
   if (container) {
+    let child: HTMLElement = container;
     let el: HTMLElement | null = container.parentElement;
     for (let depth = 0; el && el !== document.body && depth < MAX_WRAPPER_DEPTH; depth++) {
-      if (!isPureWrapper(el, depth === 0 ? container : (el.children[0] as HTMLElement))) break;
-      wrappers.add(el);
+      if (!isPureWrapper(el, child)) break;
+      wrappers.push(el);
+      child = el;
       el = el.parentElement;
     }
   }
   for (const el of Array.from(document.querySelectorAll(`[${CAPTIONS_TAG}], [${WRAPPER_TAG}]`))) {
-    if (el !== container && !wrappers.has(el)) {
+    if (el !== container && !wrappers.includes(el as HTMLElement)) {
       el.removeAttribute(CAPTIONS_TAG);
       el.removeAttribute(WRAPPER_TAG);
     }
   }
   container?.setAttribute(CAPTIONS_TAG, '1');
   for (const el of wrappers) el.setAttribute(WRAPPER_TAG, '1');
+  tagStage(container ? [container, ...wrappers] : []);
 }
 
-/** An element whose other children render nothing is only there to hold `child`. */
-function isPureWrapper(el: HTMLElement, child: HTMLElement): boolean {
-  if (!child || child.parentElement !== el) return false;
-  for (const sibling of Array.from(el.children)) {
-    if (sibling === child) continue;
-    const rect = sibling.getBoundingClientRect();
-    if (rect.width * rect.height > 0 || (sibling.textContent ?? '').trim()) return false;
+/**
+ * Records the bottom inset the stage would have without the caption band and
+ * tags the stage so the hide rule can apply it. `band` runs from the observed
+ * element outwards. Nothing is tagged unless the band really sits where the
+ * stage's inline inset ends, so any other arrangement leaves Meet's geometry alone.
+ */
+function tagStage(band: HTMLElement[]): void {
+  const stage = getStage();
+  const bottom = stage && band.length ? reclaimedStageBottom(stage, band) : null;
+  for (const el of Array.from(document.querySelectorAll(`[${STAGE_TAG}]`))) {
+    if (el !== stage || bottom === null) el.removeAttribute(STAGE_TAG);
   }
+  if (!stage || bottom === null) {
+    document.documentElement.style.removeProperty(STAGE_BOTTOM_VAR);
+    return;
+  }
+  document.documentElement.style.setProperty(STAGE_BOTTOM_VAR, `${bottom}px`);
+  stage.setAttribute(STAGE_TAG, '1');
+}
+
+/** The call stage: Meet's `<main>` landmark, absolutely positioned with an inline inset. */
+function getStage(): HTMLElement | null {
+  const main = document.querySelector<HTMLElement>('main');
+  return main && getComputedStyle(main).position === 'absolute' ? main : null;
+}
+
+function reclaimedStageBottom(stage: HTMLElement, band: HTMLElement[]): number | null {
+  const inlineBottom = parsePx(stage.style.bottom);
+  if (inlineBottom === null) return null;
+  const containingBlock = stage.offsetParent;
+  const containingBottom =
+    containingBlock && containingBlock !== document.body ? containingBlock.getBoundingClientRect().bottom : window.innerHeight;
+  const stageEdge = containingBottom - inlineBottom;
+  // The outermost band element that fits in the reserved space and starts where the stage ends.
+  for (const el of [...band].reverse()) {
+    const rect = el.getBoundingClientRect();
+    if (rect.height <= 0 || rect.height > inlineBottom) continue;
+    if (Math.abs(rect.top - stageEdge) > BAND_EDGE_TOLERANCE_PX) continue;
+    return Math.round(inlineBottom - rect.height);
+  }
+  return null;
+}
+
+function parsePx(value: string): number | null {
+  const match = /^(-?\d+(?:\.\d+)?)px$/.exec(value.trim());
+  return match ? Number(match[1]) : null;
+}
+
+/** An element whose other children paint nothing is only there to hold `child`. */
+function isPureWrapper(el: HTMLElement, child: HTMLElement): boolean {
+  if (child.parentElement !== el) return false;
+  return Array.from(el.children).every((sibling) => sibling === child || paintsNothing(sibling));
+}
+
+/**
+ * True when the element contributes no pixels: it is not rendered, is fully
+ * transparent or hidden, or neither it nor any descendant has a box with area.
+ * Text content is deliberately ignored; Meet keeps hidden templates and
+ * announcement regions with text next to the captions, and those must not keep
+ * a wrapper from collapsing.
+ */
+function paintsNothing(el: Element): boolean {
+  if (typeof el.checkVisibility === 'function' && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return true;
+  if (hasArea(el)) return false;
+  for (const descendant of Array.from(el.querySelectorAll('*'))) if (hasArea(descendant)) return false;
   return true;
+}
+
+function hasArea(el: Element): boolean {
+  const rect = el.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
 }
 
 /** One-off console dump of the captions region and its ancestors, for diagnosing layout issues. */
@@ -151,25 +222,40 @@ export function describeCaptionsLayout(container: HTMLElement): void {
   let el: HTMLElement | null = container;
   for (let depth = 0; el && el !== document.body && depth < 10; depth++) {
     const cs = getComputedStyle(el);
-    const rect = el.getBoundingClientRect();
     chain.push({
       depth,
-      tag: el.tagName.toLowerCase(),
-      jsname: el.getAttribute('jsname'),
-      class: el.className,
-      quilly: el.hasAttribute(CAPTIONS_TAG) ? 'captions' : el.hasAttribute(WRAPPER_TAG) ? 'wrapper' : '',
-      size: `${Math.round(rect.width)}×${Math.round(rect.height)}`,
+      el: describeElement(el),
+      size: describeSize(el),
       display: cs.display,
       position: cs.position,
+      flex: cs.flex,
+      minHeight: cs.minHeight,
+      padding: cs.padding,
       inlineStyle: el.getAttribute('style'),
-      children: Array.from(el.children).map((c) => {
-        const r = c.getBoundingClientRect();
-        return `${c.tagName.toLowerCase()}${c.getAttribute('jsname') ? `[${c.getAttribute('jsname')}]` : ''} ${Math.round(r.width)}×${Math.round(r.height)}`;
-      }),
+      children: Array.from(el.children).map((c) => `${describeElement(c)} ${describeSize(c)}${paintsNothing(c) ? ' (paints nothing)' : ''}`),
     });
     el = el.parentElement;
   }
-  console.info('[quilly] captions layout', chain);
+  const stage = document.querySelector<HTMLElement>('main');
+  console.info('[quilly] captions layout', {
+    stage: stage
+      ? { el: describeElement(stage), size: describeSize(stage), position: getComputedStyle(stage).position, inlineStyle: stage.getAttribute('style') }
+      : null,
+    stageBottom: document.documentElement.style.getPropertyValue(STAGE_BOTTOM_VAR) || null,
+    chain,
+  });
+}
+
+function describeElement(el: Element): string {
+  const jsname = el.getAttribute('jsname');
+  const cls = typeof el.className === 'string' && el.className ? `.${el.className.trim().split(/\s+/).join('.')}` : '';
+  const tag = el.hasAttribute(CAPTIONS_TAG) ? ' [captions]' : el.hasAttribute(WRAPPER_TAG) ? ' [wrapper]' : el.hasAttribute(STAGE_TAG) ? ' [stage]' : '';
+  return `${el.tagName.toLowerCase()}${jsname ? `[${jsname}]` : ''}${cls}${tag}`;
+}
+
+function describeSize(el: Element): string {
+  const rect = el.getBoundingClientRect();
+  return `${Math.round(rect.width)}×${Math.round(rect.height)}`;
 }
 
 /** Flag read by keepalive.js (main world) to decide whether to spoof visibility. */
