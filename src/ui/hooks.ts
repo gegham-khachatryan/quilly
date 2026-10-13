@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { chatRepo, entriesRepo, sessionsRepo } from '../shared/db';
 import { onBroadcast, sendToBackground } from '../shared/messages';
 import { getSettings, onSettingsChange, updateSettings } from '../shared/settings';
@@ -158,6 +158,25 @@ export function useStickToBottom<T extends HTMLElement>(enabled = true) {
     };
   }, [enabled]);
   return ref;
+}
+
+/** Closes a popover on a click outside `ref` or on Escape, while `open`. */
+export function useDismiss(ref: RefObject<HTMLElement>, open: boolean, onClose: () => void): void {
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [ref, open, onClose]);
 }
 
 export function openAppPage(hash = '#/sessions'): void {

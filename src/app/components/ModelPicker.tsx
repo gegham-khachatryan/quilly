@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatPricePerMillion, getModels, type OpenRouterModel } from '../../shared/openrouter';
 import { providerMeta } from '../../shared/providers';
+import { useDismiss } from '../../ui/hooks';
 import { ProviderIcon } from './ProviderIcon';
 
 interface Group {
@@ -52,16 +53,12 @@ export function ModelPicker({ value, onChange }: { value: string; onChange: (mod
     getModels().then(setModels, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, []);
 
+  useDismiss(rootRef, open, useCallback(() => setOpen(false), []));
   useEffect(() => {
     if (!open) return;
     setQuery('');
     setActive(0);
     window.setTimeout(() => searchRef.current?.focus(), 0);
-    const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
   }, [open]);
 
   const groups = useMemo(() => {
