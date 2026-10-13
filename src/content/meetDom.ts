@@ -574,33 +574,119 @@ function findLanguageOptions(scope: ParentNode = document): HTMLElement[] {
 /** How long the captions band may take to render its controls after captions turn on. */
 export const CAPTIONS_CHIP_TIMEOUT_MS = 8000;
 
+const CLICKABLE_SELECTOR = 'button, [role="button"], [role="combobox"], [aria-haspopup]';
+/** How far above a picker the select that holds its visible value may be. */
+const PICKER_ANCESTOR_DEPTH = 3;
+
 /**
  * The language chip Meet shows in the captions band (globe icon, current
- * language, opens a list): a clickable control, outside any popup, whose
- * own text or label names a caption language. The one nearest the bottom
- * of the window wins when a page shows several. Only there while the band
- * is rendered.
+ * language, opens a list). It is a clickable control outside any popup that
+ * either shows a caption language itself or is labelled as the language
+ * picker ("Meeting language"); a Material select keeps the value text next
+ * to its combobox, not inside it. Meet reveals the band's controls only
+ * while the pointer is over the band, so a chip that is in the DOM but not
+ * rendered still counts: its text can be read and its handlers still run.
+ * One that shows a language wins over one that is only labelled, a rendered
+ * one over a hidden one, then the one nearest the bottom of the window.
  */
 function findBandLanguagePicker(): HTMLElement | null {
   const locales = pageLocales();
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"], [role="combobox"], [aria-haspopup]')).filter(
-    (el) => isRendered(el) && !el.closest('[role="dialog"], [role="menu"], [role="listbox"]') && pickerLanguage(el, locales) !== null,
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(CLICKABLE_SELECTOR))
+    .filter((el) => !el.closest('[role="dialog"], [role="menu"], [role="listbox"]'))
+    .map((el) => ({ el, language: pickerLanguage(el, locales), labelled: /\blanguage\b/i.test(accessibleLabel(el)) }))
+    .filter((c) => c.language !== null || c.labelled);
+  return (
+    candidates.sort(
+      (a, b) =>
+        Number(b.language !== null) - Number(a.language !== null) ||
+        Number(isRendered(b.el)) - Number(isRendered(a.el)) ||
+        b.el.getBoundingClientRect().top - a.el.getBoundingClientRect().top,
+    )[0]?.el ?? null
   );
-  return candidates.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0] ?? null;
 }
 
-/** The language a picker control currently shows, from its value, its text or its labels. */
+/** How many ancestors receive the enter events; the band's hover handlers sit a few levels above the chip. */
+const HOVER_DEPTH = 6;
+/** Time given to Meet to reveal the band's controls after the synthetic hover. */
+const HOVER_REVEAL_MS = 400;
+
+/** Moves a synthetic pointer over `el`, as a user resting the mouse on the captions band would. */
+function hover(el: Element, entering: boolean): void {
+  const rect = el.getBoundingClientRect();
+  const at = { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 };
+  const bubbling = { ...at, bubbles: true, cancelable: true, composed: true };
+  const pointer = { pointerId: 1, pointerType: 'mouse', isPrimary: true };
+  el.dispatchEvent(new PointerEvent(entering ? 'pointerover' : 'pointerout', { ...bubbling, ...pointer }));
+  el.dispatchEvent(new MouseEvent(entering ? 'mouseover' : 'mouseout', bubbling));
+  let node: Element | null = el;
+  for (let depth = 0; node && node !== document.body && depth < HOVER_DEPTH; depth++, node = node.parentElement) {
+    node.dispatchEvent(new PointerEvent(entering ? 'pointerenter' : 'pointerleave', { ...at, ...pointer, bubbles: false }));
+    node.dispatchEvent(new MouseEvent(entering ? 'mouseenter' : 'mouseleave', { ...at, bubbles: false }));
+  }
+  if (entering) {
+    el.dispatchEvent(new PointerEvent('pointermove', { ...bubbling, ...pointer }));
+    el.dispatchEvent(new MouseEvent('mousemove', bubbling));
+  }
+}
+
+function accessibleLabel(el: Element): string {
+  const refs = (el.getAttribute('aria-labelledby') ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => text(document.getElementById(id)))
+    .join(' ');
+  return `${el.getAttribute('aria-label') ?? ''} ${refs} ${el.getAttribute('title') ?? ''}`.trim();
+}
+
+/**
+ * The language a picker control currently shows: from its value attributes,
+ * its own text, the selected option of the list it controls, or the text of
+ * the select around it (minus any option list).
+ */
 function pickerLanguage(el: HTMLElement, locales: readonly string[]): CaptionLanguage | null {
   const value = el.getAttribute('data-value') ?? el.getAttribute('lang');
   if (value) {
     const byValue = matchCaptionLanguage({ value, text: '' }, locales);
     if (byValue) return byValue;
   }
-  for (const label of [text(el), el.getAttribute('aria-label') ?? '', el.getAttribute('title') ?? '']) {
-    const found = label && findCaptionLanguageIn(label, locales);
-    if (found) return found;
+  const own = findCaptionLanguageIn(text(el), locales);
+  if (own) return own;
+  const selected = selectedOptionOf(el);
+  if (selected) {
+    const fromOption = matchCaptionLanguage(optionOf(selected), locales);
+    if (fromOption) return fromOption;
+  }
+  let ancestor = el.parentElement;
+  for (let depth = 0; ancestor && ancestor !== document.body && depth < PICKER_ANCESTOR_DEPTH; depth++, ancestor = ancestor.parentElement) {
+    const around = findCaptionLanguageIn(textOutside(ancestor, '[role="listbox"], [role="menu"]'), locales);
+    if (around) return around;
   }
   return null;
+}
+
+/** The option marked selected in the list a combobox controls, when that list is in the DOM. */
+function selectedOptionOf(el: HTMLElement): HTMLElement | null {
+  const ids = [el.getAttribute('aria-controls'), el.getAttribute('aria-owns'), el.getAttribute('aria-activedescendant')].filter(
+    (id): id is string => Boolean(id),
+  );
+  for (const id of ids) {
+    const target = document.getElementById(id);
+    if (!target) continue;
+    if (target.getAttribute('role') === 'option') return target;
+    const selected = target.querySelector<HTMLElement>('[role="option"][aria-selected="true"]');
+    if (selected) return selected;
+  }
+  return null;
+}
+
+/** Text content of `root` without the subtrees matching `excludeSelector`. */
+function textOutside(root: Element, excludeSelector: string): string {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => (node.parentElement?.closest(excludeSelector) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
+  let out = '';
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) out += `${node.textContent ?? ''} `;
+  return normalizeText(out);
 }
 
 /** The caption language Meet currently shows in the captions band; null when the band's chip is not rendered. */
@@ -615,9 +701,10 @@ function optionOf(el: HTMLElement): LanguageOption {
 
 /** One-off console dump for diagnosing chip detection: labels of the clickable controls near the bottom of the window. */
 function describeClickables(): string[] {
-  return Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"], [role="combobox"], [aria-haspopup]'))
-    .filter((el) => isRendered(el) && el.getBoundingClientRect().top > window.innerHeight / 2)
-    .map((el) => `${el.tagName.toLowerCase()}[${el.getAttribute('role') ?? ''}] aria-label="${el.getAttribute('aria-label') ?? ''}" text="${text(el).slice(0, 40)}"`);
+  return Array.from(document.querySelectorAll<HTMLElement>(CLICKABLE_SELECTOR)).map(
+    (el) =>
+      `${el.tagName.toLowerCase()}[${el.getAttribute('role') ?? ''}]${isRendered(el) ? '' : ' (hidden)'} aria-label="${el.getAttribute('aria-label') ?? ''}" text="${text(el).slice(0, 40)}"`,
+  );
 }
 
 /** UI locales to resolve Meet's localized language names with: the page's, then English. */
@@ -641,23 +728,30 @@ export async function selectCaptionsLanguage(wanted: CaptionLanguage, chipTimeou
   }
   const shown = pickerLanguage(picker, locales);
   if (shown?.code === wanted.code) return shown; // already there: nothing to open
-  const before = findLanguageOptions().length;
-  press(picker);
-  const options = await waitFor(() => {
-    const list = findLanguageOptions();
-    return list.length > before ? list : null;
-  });
-  if (!options) throw new Error('Meet’s caption language list did not open.');
-  const option = options.find((o) => matchCaptionLanguage(optionOf(o), locales)?.code === wanted.code);
-  if (!option) {
-    pressEscape();
-    throw new Error(`Meet does not offer “${wanted.name}” for captions here.`);
+  const hovered = getCaptionsContainer() ?? picker;
+  hover(hovered, true);
+  try {
+    if (!isRendered(picker)) await waitFor(() => (isRendered(picker) ? picker : null), HOVER_REVEAL_MS);
+    const before = findLanguageOptions().length;
+    press(picker);
+    const options = await waitFor(() => {
+      const list = findLanguageOptions();
+      return list.length > before ? list : null;
+    });
+    if (!options) throw new Error('Meet’s caption language list did not open.');
+    const option = options.find((o) => matchCaptionLanguage(optionOf(o), locales)?.code === wanted.code);
+    if (!option) {
+      pressEscape();
+      throw new Error(`Meet does not offer “${wanted.name}” for captions here.`);
+    }
+    press(option);
+    // Meet re-renders the chip with the new language once the list closes.
+    const applied = await waitFor(() => {
+      const now = readCaptionsLanguage();
+      return now?.code === wanted.code ? now : null;
+    });
+    return applied ?? readCaptionsLanguage() ?? wanted;
+  } finally {
+    hover(hovered, false);
   }
-  press(option);
-  // Meet re-renders the chip with the new language once the list closes.
-  const applied = await waitFor(() => {
-    const shown = readCaptionsLanguage();
-    return shown?.code === wanted.code ? shown : null;
-  });
-  return applied ?? readCaptionsLanguage() ?? wanted;
 }
