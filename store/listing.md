@@ -6,36 +6,39 @@ Copy for the developer dashboard. Keep in sync with `public/manifest.json`.
 
 **Name** (≤ 75): `Quilly – transcripts for Google Meet`
 
-**Summary** (≤ 132): `Transcripts for Google Meet: records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.`
+**Summary** (≤ 132): `Transcripts for Google Meet. Records captions locally with speaker and time, exports them, and answers questions with your AI key.`
 
 **Category**: Productivity → Workflow & Planning · **Language**: English
 
 **Description**:
 
 ```
-Quilly turns Google Meet's captions into a transcript you own.
+Quilly gives you a written record of every Google Meet call, saved in your browser and yours to keep.
 
-RECORD
-• Joins the dots for you: when you enter a call, Quilly switches on Meet's captions and records every line with the speaker's name and a timestamp.
-• Keeps recording while you work in other tabs.
-• Hand raises and emoji reactions are logged alongside what was said.
-• Start/stop from the side panel or with Alt+Shift+R. Auto-start can be turned off.
+HOW IT WORKS
+Google Meet already shows live captions. Quilly turns them on when you join a call and writes down every line, with who said it and when. No bots join your meeting, and nothing is sent anywhere.
 
-FOLLOW LIVE
-• The side panel streams the transcript as people speak and follows the active recording across tabs.
+WHILE YOU ARE IN THE CALL
+• Recording starts on its own when you join. You can turn auto-start off and start or stop by hand from the side panel, or with Alt+Shift+R.
+• Watch the transcript grow in Chrome's side panel as people speak.
+• Switch to other tabs and keep working. Quilly keeps recording in the background.
+• Prefer a clean screen? Hide Meet's captions with the usual captions button or the C key. Quilly keeps recording them.
+• Hand raises and emoji reactions are noted in the transcript next to what was said.
 
-REVIEW & EXPORT
-• Sessions page with search; each session has transcript search, speaker filter, rename and delete.
-• Export as plain text, Markdown or JSON, or copy to the clipboard.
+AFTER THE CALL
+• Every meeting is saved as a session. Search across all of them, or search within one and filter by speaker.
+• Rename sessions and delete the ones you no longer need.
+• Export as plain text, Markdown or JSON, or copy the transcript to your clipboard.
 
-ASK AI (optional)
-• Bring your own OpenRouter API key and pick any model: summary, action items, decisions, follow-up email, or free-form questions about the meeting.
+ASK AI ABOUT A MEETING (OPTIONAL)
+• Add your own OpenRouter API key and choose any model.
+• One click gives you a summary, action items, decisions or a follow-up email. Or ask your own questions about what was discussed.
 
-PRIVATE BY DESIGN
-• Everything is stored in your browser. No account, no Quilly servers, no analytics.
-• Transcripts leave your machine only when you ask the AI panel a question, and then only to OpenRouter with your own key.
+YOUR DATA STAYS WITH YOU
+• Transcripts, settings and AI chats live only in your browser. No account, no Quilly servers, no analytics.
+• The only time a transcript leaves your computer is when you ask the AI a question. It then goes to OpenRouter, using your key, and nowhere else.
 
-Quilly is not affiliated with Google. Recording a conversation may require participants' consent where you live; please check before you record.
+Quilly is not affiliated with Google. Depending on where you live, recording a conversation may require the consent of everyone in it. Please check before you record.
 ```
 
 **Screenshots** (1280×800, up to 5) – the same images the README uses, in `docs/screenshots/`:
