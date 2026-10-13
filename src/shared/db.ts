@@ -1,4 +1,4 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { deleteDB, openDB, type DBSchema, type IDBPDatabase, type StoreNames } from 'idb';
 import { broadcast } from './messages';
 import type { ChatMessage, Session, TranscriptEntry } from './types';
 
@@ -8,23 +8,63 @@ interface QuillyDB extends DBSchema {
   chat: { key: string; value: ChatMessage; indexes: { bySession: string; bySessionCreated: [string, number] } };
 }
 
+const DB_NAME = 'quilly';
+const DB_VERSION = 1;
+/** Name the database had before the project was renamed; its contents move over on first open. */
+const LEGACY_DB_NAME = 'meet-hunter';
+const STORES = ['sessions', 'entries', 'chat'] as const;
+
 let dbPromise: Promise<IDBPDatabase<QuillyDB>> | null = null;
 
 function db(): Promise<IDBPDatabase<QuillyDB>> {
-  // The database keeps its original name on purpose: renaming it would orphan every recorded session.
-  dbPromise ??= openDB<QuillyDB>('meet-hunter', 1, {
-    upgrade(database) {
-      const sessions = database.createObjectStore('sessions', { keyPath: 'id' });
-      sessions.createIndex('byStartedAt', 'startedAt');
-      const entries = database.createObjectStore('entries', { keyPath: 'id' });
-      entries.createIndex('bySession', 'sessionId');
-      entries.createIndex('bySessionSeq', ['sessionId', 'seq']);
-      const chat = database.createObjectStore('chat', { keyPath: 'id' });
-      chat.createIndex('bySession', 'sessionId');
-      chat.createIndex('bySessionCreated', ['sessionId', 'createdAt']);
-    },
-  });
+  dbPromise ??= open();
   return dbPromise;
+}
+
+async function open(): Promise<IDBPDatabase<QuillyDB>> {
+  const database = await openDB<QuillyDB>(DB_NAME, DB_VERSION, { upgrade: createSchema });
+  await migrateLegacy(database).catch((error) => console.warn('[quilly] legacy database not migrated:', error));
+  return database;
+}
+
+function createSchema(database: IDBPDatabase<QuillyDB>): void {
+  const sessions = database.createObjectStore('sessions', { keyPath: 'id' });
+  sessions.createIndex('byStartedAt', 'startedAt');
+  const entries = database.createObjectStore('entries', { keyPath: 'id' });
+  entries.createIndex('bySession', 'sessionId');
+  entries.createIndex('bySessionSeq', ['sessionId', 'seq']);
+  const chat = database.createObjectStore('chat', { keyPath: 'id' });
+  chat.createIndex('bySession', 'sessionId');
+  chat.createIndex('bySessionCreated', ['sessionId', 'createdAt']);
+}
+
+/**
+ * Copies every row of the legacy database into `target`, then deletes it.
+ * Several contexts (background, side panel, app) may open the database at
+ * once and all run this; rows are keyed, so copying twice is harmless, and
+ * the delete waits for the other connections to close.
+ */
+async function migrateLegacy(target: IDBPDatabase<QuillyDB>): Promise<void> {
+  const existing = await indexedDB.databases();
+  if (!existing.some((d) => d.name === LEGACY_DB_NAME)) return;
+  const legacy = await openDB<QuillyDB>(LEGACY_DB_NAME, DB_VERSION, {
+    upgrade: createSchema, // only reached if the legacy database somehow lacks the schema
+    blocking: () => legacy.close(), // another context is deleting it: let go
+  });
+  try {
+    for (const store of STORES) if (legacy.objectStoreNames.contains(store)) await copyStore(legacy, target, store);
+  } finally {
+    legacy.close();
+  }
+  await deleteDB(LEGACY_DB_NAME);
+  broadcast({ type: 'sessions/changed' });
+}
+
+async function copyStore<Name extends StoreNames<QuillyDB>>(from: IDBPDatabase<QuillyDB>, to: IDBPDatabase<QuillyDB>, store: Name): Promise<void> {
+  const rows = await from.getAll(store);
+  if (rows.length === 0) return;
+  const tx = to.transaction(store, 'readwrite');
+  await Promise.all([...rows.map((row) => tx.store.put(row)), tx.done]);
 }
 
 /** Fields added after the first release default here, so older rows need no migration pass. */

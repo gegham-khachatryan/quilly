@@ -11,6 +11,7 @@ All notable changes to Quilly are documented here. The format follows
 
 ### Changed
 - "Hide caption overlay while recording" is off by default; captions stay visible in Meet unless the option is turned on.
+- The local database is now named `quilly`. Sessions, transcripts and chats recorded under the previous name are moved over automatically the first time Quilly opens after the update.
 
 ### Fixed
 - Deleting or renaming a session on the sessions or session page, or deleting all data, now updates the side panel's recent sessions and any other open Quilly page right away.
