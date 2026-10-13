@@ -3,7 +3,7 @@
 All notable changes to Quilly are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow SemVer.
 
-## [Unreleased]
+## [0.2.0] – 2026-10-13
 
 ### Added
 - Default caption language setting. When a recording starts, Quilly switches Meet's caption language to it unless Meet already shows it; "Leave as set in Meet" keeps Meet's choice.
