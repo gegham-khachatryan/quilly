@@ -9,6 +9,9 @@ All notable changes to Quilly are documented here. The format follows
 - Default caption language setting. When a recording starts, Quilly switches Meet's caption language to it unless Meet already shows it; "Leave as set in Meet" keeps Meet's choice.
 - Caption language dropdown in the live panel to switch the language of the call being recorded without leaving the panel. It mirrors the language chip in Meet's captions band, so changes made in Meet show up too. The change applies to that call only.
 
+### Changed
+- "Hide caption overlay while recording" is off by default; captions stay visible in Meet unless the option is turned on.
+
 ## [0.1.1] – 2026-10-12
 
 ### Fixed

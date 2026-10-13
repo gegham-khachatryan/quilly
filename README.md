@@ -24,7 +24,7 @@ your own OpenRouter key. Everything stays in your browser.
 ### In detail
 
 - **Auto-start.** Joining a call starts a recording and turns captions on. Captions Quilly switched on are switched off again when it stops. Auto-start can be disabled; `Alt+Shift+R` toggles recording by hand.
-- **Invisible captions.** The caption overlay is hidden by default while recording, and the space it would take is given back to the video grid. Meet's captions button and the `c` key show or hide it instead of cutting the transcript source; the button carries a Quilly badge and dims while the overlay is hidden, so it reads like a native toggle.
+- **Invisible captions.** The caption overlay can be hidden while recording (off by default), and the space it would take is given back to the video grid. Meet's captions button and the `c` key show or hide it instead of cutting the transcript source; the button carries a Quilly badge and dims while the overlay is hidden, so it reads like a native toggle.
 - **Caption language.** A default caption language in Settings is applied whenever a recording starts, and the live panel has a dropdown to switch the language of the current call. Quilly picks it in the language chip of Meet’s captions band (or in Meet’s caption settings when the chip is absent) and mirrors whatever the chip shows; nothing is sent anywhere else.
 - **Background tabs.** Meet stops rendering captions in a hidden tab. A small main-world shim keeps them flowing while a recording is active and is inert otherwise.
 - **Hand raises and reactions** are recorded as events in the transcript, exported with it and visible to the AI.
