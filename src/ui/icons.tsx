@@ -134,3 +134,10 @@ export const ListIcon = (p: IconProps) => (
     <path d="M3 6h.01M3 12h.01M3 18h.01" />
   </Icon>
 );
+export const GlobeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3a14 14 0 010 18M12 3a14 14 0 000 18" />
+  </Icon>
+);

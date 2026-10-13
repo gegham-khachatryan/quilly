@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatDateTime, formatDuration, formatRelative, pluralize } from '../shared/format';
+import { sendToBackground } from '../shared/messages';
 import { countCaptions } from '../shared/transcript';
 import type { ActiveRecording, Session } from '../shared/types';
+import { CaptionLanguageSelect } from '../ui/CaptionLanguageSelect';
 import { Empty, Toggle, TranscriptList } from '../ui/components';
 import { openAppPage, useActiveRecordings, useCurrentTabId, useEntries, useSessions, useSettings, useStickToBottom, useTabState } from '../ui/hooks';
 import { ArrowLeftIcon, ListIcon, SettingsIcon } from '../ui/icons';
@@ -112,10 +114,50 @@ function TranscriptPane({ session, live, onBack }: { session: Session; live: Act
           </svg>
         </button>
       </div>
+      {live && <CaptionLanguageBar tabId={live.tabId} />}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3">
         <TranscriptList entries={entries} startedAt={session.startedAt} compact />
       </div>
     </>
+  );
+}
+
+/**
+ * Switches the caption language of the Meet tab being recorded. The change is
+ * made in Meet itself and applies to this call only; the default for new
+ * recordings lives in Settings.
+ */
+function CaptionLanguageBar({ tabId }: { tabId: number }) {
+  const [state, refresh] = useTabState(tabId);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const meet = state?.meet ?? null;
+
+  const change = async (language: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await sendToBackground({ type: 'captions/setLanguage', tabId, language });
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-b border-line bg-panel px-3 py-1.5 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <span className="shrink-0 text-muted">Caption language</span>
+        {busy ? (
+          <span className="text-muted">Switching…</span>
+        ) : (
+          <CaptionLanguageSelect size="sm" align="right" value={meet?.captionLanguage ?? ''} placeholder="As set in Meet" disabled={!meet} onChange={(code) => void change(code)} />
+        )}
+      </div>
+      {error && <p className="mt-1 text-rec">{error}</p>}
+    </div>
   );
 }
 

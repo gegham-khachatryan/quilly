@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
+import { CaptionLanguageSelect } from '../../ui/CaptionLanguageSelect';
 import { Toggle } from '../../ui/components';
 import { useSettings } from '../../ui/hooks';
 import { ModelPicker } from '../components/ModelPicker';
@@ -41,6 +42,20 @@ export function SettingsPage() {
           checked={settings.hideCaptionsOverlay}
           onChange={(v) => void update({ hideCaptionsOverlay: v })}
         />
+        <div className="space-y-1">
+          <span className="block text-sm">Default caption language</span>
+          <span className="block text-xs text-muted">
+            The language Meet listens for. Applied through Meet’s caption settings each time a recording starts; it can be changed for a single call
+            from the live panel.
+          </span>
+          <div className="pt-1">
+            <CaptionLanguageSelect
+              value={settings.captionLanguage}
+              defaultLabel="Leave as set in Meet"
+              onChange={(captionLanguage) => void update({ captionLanguage })}
+            />
+          </div>
+        </div>
       </section>
 
       <section className="card space-y-4 p-4">
