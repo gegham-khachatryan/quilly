@@ -26,6 +26,12 @@ export async function getMeetState(tabId: number): Promise<MeetState | null> {
   return ping(tabId);
 }
 
+/** Switch the caption language in a Meet tab; errors from the page (picker not found) propagate to the caller. */
+export async function setCaptionLanguage(tabId: number, language: string): Promise<MeetState> {
+  if (!(await getMeetState(tabId))) throw new Error('Can’t reach this Meet tab. Reload the page to connect.');
+  return sendToTab<MeetState>(tabId, { type: 'captions/setLanguage', language });
+}
+
 async function ping(tabId: number): Promise<MeetState | null> {
   try {
     return await sendToTab<MeetState>(tabId, { type: 'meet/getState' });

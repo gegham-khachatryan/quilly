@@ -9,7 +9,9 @@ export type ContentMessage =
 export type BackgroundToContentMessage =
   | { type: 'capture/start'; sessionId: string }
   | { type: 'capture/stop' }
-  | { type: 'meet/getState' };
+  | { type: 'meet/getState' }
+  /** Switch Meet's caption language; the response is the state after the change. */
+  | { type: 'captions/setLanguage'; language: string };
 
 // ---- side panel / app -> background ------------------------------------------
 export type UiMessage =
@@ -17,7 +19,8 @@ export type UiMessage =
   | { type: 'recording/start'; tabId: number }
   | { type: 'recording/stop'; tabId: number }
   | { type: 'recording/active' }
-  | { type: 'tab/focus'; tabId: number };
+  | { type: 'tab/focus'; tabId: number }
+  | { type: 'captions/setLanguage'; tabId: number; language: string };
 
 export type UiResponse = {
   'tab/getState': TabRecordingState;
@@ -25,6 +28,7 @@ export type UiResponse = {
   'recording/stop': Session | null;
   'recording/active': ActiveRecording[];
   'tab/focus': void;
+  'captions/setLanguage': MeetState;
 };
 
 // ---- background -> everyone (fire and forget) --------------------------------

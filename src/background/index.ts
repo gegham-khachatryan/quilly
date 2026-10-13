@@ -1,6 +1,6 @@
 import { errorEnvelope, type ContentMessage, type UiMessage, type UiResponse } from '../shared/messages';
 import type { TabRecordingState } from '../shared/types';
-import { forgetTab, getMeetState, injectIntoOpenMeetTabs } from './contentScripts';
+import { forgetTab, getMeetState, injectIntoOpenMeetTabs, setCaptionLanguage } from './contentScripts';
 import {
   flashBadge,
   focusTab,
@@ -83,6 +83,8 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
     case 'tab/focus':
       await focusTab(message.tabId);
       return;
+    case 'captions/setLanguage':
+      return setCaptionLanguage(message.tabId, message.language) satisfies Promise<UiResponse['captions/setLanguage']>;
   }
 }
 

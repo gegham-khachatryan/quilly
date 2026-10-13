@@ -1,3 +1,4 @@
+import { MEET_DEFAULT_CAPTION_LANGUAGE } from './captionLanguages';
 import type { Settings } from './types';
 
 const KEY = 'settings';
@@ -6,6 +7,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoStart: true,
   keepAliveInBackground: true,
   hideCaptionsOverlay: true,
+  captionLanguage: MEET_DEFAULT_CAPTION_LANGUAGE,
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
 };
