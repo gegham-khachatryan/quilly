@@ -4,7 +4,7 @@
  * attributes and structure over class names.
  */
 
-import { matchCaptionLanguage, type CaptionLanguage, type LanguageOption } from '../shared/captionLanguages';
+import { findCaptionLanguageIn, matchCaptionLanguage, type CaptionLanguage, type LanguageOption } from '../shared/captionLanguages';
 import type { CaptionsStatus } from '../shared/types';
 
 const CAPTION_CONTAINER_SELECTORS = [
@@ -562,144 +562,45 @@ function pressEscape(): void {
 
 const text = (el: Element | null | undefined): string => normalizeText(el?.textContent);
 
-function visibleButtons(): HTMLButtonElement[] {
-  return Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label]')).filter((b) => !b.disabled && isRendered(b));
-}
-
-/** The gear Meet shows next to the captions ("Caption settings"); opens the settings dialog on the captions tab. */
-function findCaptionSettingsButton(): HTMLButtonElement | null {
-  return (
-    visibleButtons().find((b) => {
-      const label = b.getAttribute('aria-label') ?? '';
-      return /\bcaptions?\b|\bsubtitles?\b/i.test(label) && /settings?|preferences/i.test(label);
-    }) ?? null
-  );
-}
-
-/** The toolbar's "More options" (several tiles carry the same label; the toolbar one sits lowest on screen). */
-function findMoreOptionsButton(): HTMLButtonElement | null {
-  const candidates = visibleButtons().filter((b) => /^more (options|actions)\b/i.test(b.getAttribute('aria-label') ?? ''));
-  return candidates.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0] ?? null;
-}
-
-function findDialog(): HTMLElement | null {
-  return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find(isRendered) ?? null;
-}
-
-function findCaptionsTab(dialog: HTMLElement): HTMLElement | null {
-  const tabs = Array.from(dialog.querySelectorAll<HTMLElement>('[role="tab"]')).filter(isRendered);
-  return (
-    tabs.find((t) => /\bcaptions?\b|\bsubtitles?\b/i.test(`${t.getAttribute('aria-label') ?? ''} ${text(t)}`)) ??
-    tabs.find((t) => /closed_caption/.test(text(t))) ??
-    null
-  );
-}
-
-/**
- * Opens Meet's settings on the captions tab and returns the dialog. The gear
- * by the captions is the short way; the toolbar menu is the fallback.
- */
-async function openCaptionSettings(): Promise<HTMLElement> {
-  const gear = findCaptionSettingsButton();
-  let dialog: HTMLElement | null = null;
-  if (gear) {
-    press(gear);
-    dialog = await waitFor(findDialog);
-  }
-  if (!dialog) {
-    const more = findMoreOptionsButton();
-    if (!more) throw new Error('Could not find Meet’s “More options” button.');
-    press(more);
-    const settingsItem = await waitFor(() => {
-      const menu = Array.from(document.querySelectorAll<HTMLElement>('[role="menu"]')).find(isRendered);
-      if (!menu) return null;
-      const items = Array.from(menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"]'));
-      return items.find((i) => /\bsettings?\b/i.test(`${i.getAttribute('aria-label') ?? ''} ${text(i)}`)) ?? null;
-    });
-    if (!settingsItem) {
-      pressEscape();
-      throw new Error('Could not find “Settings” in Meet’s menu.');
-    }
-    press(settingsItem);
-    dialog = await waitFor(findDialog);
-    if (!dialog) throw new Error('Meet’s settings dialog did not open.');
-  }
-  // The gear lands on the captions tab already; the menu route (and a dialog that remembers another tab) may not.
-  const tab = await waitFor(() => findCaptionsTab(dialog), gear ? 600 : STEP_TIMEOUT_MS);
-  if (tab) {
-    if (tab.getAttribute('aria-selected') !== 'true') press(tab);
-  } else if (!gear) {
-    closeDialog(dialog);
-    throw new Error('Could not find the Captions tab in Meet’s settings.');
-  }
-  return dialog;
-}
-
-function closeDialog(dialog: HTMLElement): void {
-  const close = Array.from(dialog.querySelectorAll<HTMLElement>('button[aria-label]')).find(
-    (b) => isRendered(b) && /^(close|dismiss)\b/i.test(b.getAttribute('aria-label') ?? ''),
-  );
-  if (close) press(close);
-  else pressEscape();
-}
-
-type LanguagePicker = { kind: 'select'; el: HTMLSelectElement } | { kind: 'combobox'; el: HTMLElement };
-
-function accessibleLabel(el: Element): string {
-  const own = el.getAttribute('aria-label') ?? '';
-  const refs = (el.getAttribute('aria-labelledby') ?? '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((id) => text(document.getElementById(id)))
-    .join(' ');
-  return `${own} ${refs}`.trim();
-}
-
-/**
- * The "Language of the meeting" picker. The captions tab may hold a second
- * picker for translated captions; the one labelled as the meeting's language
- * wins, otherwise the first one rendered, which is the meeting language.
- */
-function findLanguagePicker(dialog: HTMLElement): LanguagePicker | null {
-  const pickers = Array.from(
-    dialog.querySelectorAll<HTMLElement>('select, [role="combobox"], [aria-haspopup="listbox"], [role="listbox"][aria-expanded]'),
-  ).filter(isRendered);
-  const meetingPicker = pickers.find((p) => /meeting|spoken|source/i.test(accessibleLabel(p))) ?? pickers[0];
-  if (!meetingPicker) return null;
-  return meetingPicker instanceof HTMLSelectElement ? { kind: 'select', el: meetingPicker } : { kind: 'combobox', el: meetingPicker };
-}
+const OPTION_SELECTOR = '[role="option"], [role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]';
 
 function findLanguageOptions(scope: ParentNode = document): HTMLElement[] {
   // A popup may render inside its owner or in a portal at the document root.
-  const inScope = Array.from(scope.querySelectorAll<HTMLElement>('[role="option"]')).filter(isRendered);
+  const inScope = Array.from(scope.querySelectorAll<HTMLElement>(OPTION_SELECTOR)).filter(isRendered);
   if (inScope.length > 0 || scope === document) return inScope;
   return findLanguageOptions(document);
 }
 
+/** How long the captions band may take to render its controls after captions turn on. */
+export const CAPTIONS_CHIP_TIMEOUT_MS = 8000;
+
 /**
  * The language chip Meet shows in the captions band (globe icon, current
- * language, opens a list). It is the control whose own text is a caption
- * language and that opens a popup; the one nearest the bottom wins when a
- * page shows several. Only there while the band is rendered.
+ * language, opens a list): a clickable control, outside any popup, whose
+ * own text or label names a caption language. The one nearest the bottom
+ * of the window wins when a page shows several. Only there while the band
+ * is rendered.
  */
 function findBandLanguagePicker(): HTMLElement | null {
   const locales = pageLocales();
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"], [role="combobox"]')).filter(
-    (el) =>
-      isRendered(el) &&
-      !el.closest('[role="dialog"], [role="menu"], [role="listbox"]') &&
-      (el.hasAttribute('aria-haspopup') || el.hasAttribute('aria-expanded') || /language/i.test(accessibleLabel(el))) &&
-      pickerLanguage(el, locales) !== null,
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"], [role="combobox"], [aria-haspopup]')).filter(
+    (el) => isRendered(el) && !el.closest('[role="dialog"], [role="menu"], [role="listbox"]') && pickerLanguage(el, locales) !== null,
   );
   return candidates.sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0] ?? null;
 }
 
-/** The language a picker control currently shows, from its value, its text or its label. */
+/** The language a picker control currently shows, from its value, its text or its labels. */
 function pickerLanguage(el: HTMLElement, locales: readonly string[]): CaptionLanguage | null {
-  return (
-    matchCaptionLanguage({ value: el.getAttribute('data-value') ?? el.getAttribute('lang'), text: text(el) }, locales) ??
-    matchCaptionLanguage({ text: el.getAttribute('aria-label') ?? '' }, locales)
-  );
+  const value = el.getAttribute('data-value') ?? el.getAttribute('lang');
+  if (value) {
+    const byValue = matchCaptionLanguage({ value, text: '' }, locales);
+    if (byValue) return byValue;
+  }
+  for (const label of [text(el), el.getAttribute('aria-label') ?? '', el.getAttribute('title') ?? '']) {
+    const found = label && findCaptionLanguageIn(label, locales);
+    if (found) return found;
+  }
+  return null;
 }
 
 /** The caption language Meet currently shows in the captions band; null when the band's chip is not rendered. */
@@ -708,10 +609,38 @@ export function readCaptionsLanguage(): CaptionLanguage | null {
   return picker ? pickerLanguage(picker, pageLocales()) : null;
 }
 
-/** Picks a language in the band's chip. Returns false when the chip is not there, so the caller can fall back. */
-async function selectInBand(wanted: CaptionLanguage, locales: readonly string[]): Promise<CaptionLanguage | false> {
-  const picker = findBandLanguagePicker();
-  if (!picker) return false;
+function optionOf(el: HTMLElement): LanguageOption {
+  return { value: el.getAttribute('data-value') ?? el.getAttribute('value') ?? el.getAttribute('lang'), text: text(el) };
+}
+
+/** One-off console dump for diagnosing chip detection: labels of the clickable controls near the bottom of the window. */
+function describeClickables(): string[] {
+  return Array.from(document.querySelectorAll<HTMLElement>('button, [role="button"], [role="combobox"], [aria-haspopup]'))
+    .filter((el) => isRendered(el) && el.getBoundingClientRect().top > window.innerHeight / 2)
+    .map((el) => `${el.tagName.toLowerCase()}[${el.getAttribute('role') ?? ''}] aria-label="${el.getAttribute('aria-label') ?? ''}" text="${text(el).slice(0, 40)}"`);
+}
+
+/** UI locales to resolve Meet's localized language names with: the page's, then English. */
+function pageLocales(): string[] {
+  const lang = document.documentElement.lang?.trim();
+  return lang ? [lang, 'en'] : ['en'];
+}
+
+/**
+ * Switches Meet's caption language through the chip in its captions band and
+ * returns the entry Meet shows as selected afterwards. The band renders a
+ * moment after captions turn on, so the chip is awaited up to `chipTimeoutMs`.
+ * Throws with a readable message when the chip or the option cannot be found.
+ */
+export async function selectCaptionsLanguage(wanted: CaptionLanguage, chipTimeoutMs = CAPTIONS_CHIP_TIMEOUT_MS): Promise<CaptionLanguage> {
+  const locales = pageLocales();
+  const picker = await waitFor(findBandLanguagePicker, chipTimeoutMs);
+  if (!picker) {
+    console.info('[quilly] captions language chip not found; clickable controls:', describeClickables());
+    throw new Error('Meet’s caption language chip is not on screen. Turn captions on, or pick the language in Meet.');
+  }
+  const shown = pickerLanguage(picker, locales);
+  if (shown?.code === wanted.code) return shown; // already there: nothing to open
   const before = findLanguageOptions().length;
   press(picker);
   const options = await waitFor(() => {
@@ -731,63 +660,4 @@ async function selectInBand(wanted: CaptionLanguage, locales: readonly string[])
     return shown?.code === wanted.code ? shown : null;
   });
   return applied ?? readCaptionsLanguage() ?? wanted;
-}
-
-function optionOf(el: HTMLElement): LanguageOption {
-  return { value: el.getAttribute('data-value') ?? el.getAttribute('value') ?? el.getAttribute('lang'), text: text(el) };
-}
-
-/** UI locales to resolve Meet's localized language names with: the page's, then English. */
-function pageLocales(): string[] {
-  const lang = document.documentElement.lang?.trim();
-  return lang ? [lang, 'en'] : ['en'];
-}
-
-/**
- * Switches Meet's caption language and returns the entry Meet shows as
- * selected afterwards. The chip in the captions band is the short way; when
- * it is not rendered, Meet's settings dialog is driven instead. Throws with a
- * readable message when a step cannot be found; whatever was opened is closed.
- */
-export async function selectCaptionsLanguage(wanted: CaptionLanguage): Promise<CaptionLanguage> {
-  const locales = pageLocales();
-  const inBand = await selectInBand(wanted, locales);
-  if (inBand) return inBand;
-  const dialog = await openCaptionSettings();
-  try {
-    const picker = await waitFor(() => findLanguagePicker(dialog));
-    if (!picker) throw new Error('Could not find the caption language picker in Meet’s settings.');
-
-    if (picker.kind === 'select') {
-      const options = Array.from(picker.el.options);
-      const option = options.find((o) => matchCaptionLanguage({ value: o.value, text: o.text }, locales)?.code === wanted.code);
-      if (!option) throw new Error(`Meet does not offer “${wanted.name}” for captions here.`);
-      picker.el.value = option.value;
-      picker.el.dispatchEvent(new Event('input', { bubbles: true }));
-      picker.el.dispatchEvent(new Event('change', { bubbles: true }));
-      return matchCaptionLanguage({ value: option.value, text: option.text }, locales) ?? wanted;
-    }
-
-    const before = findLanguageOptions(dialog).length;
-    press(picker.el);
-    const options = await waitFor(() => {
-      const list = findLanguageOptions(dialog);
-      return list.length > before ? list : null;
-    });
-    if (!options) throw new Error('Meet’s caption language list did not open.');
-    const option = options.find((o) => matchCaptionLanguage(optionOf(o), locales)?.code === wanted.code);
-    if (!option) {
-      pressEscape();
-      throw new Error(`Meet does not offer “${wanted.name}” for captions here.`);
-    }
-    press(option);
-    // Meet reflects the choice in the picker's text once the list closes.
-    const applied = await waitFor(() => {
-      if (isRendered(option) && option.isConnected) return null;
-      return matchCaptionLanguage({ value: picker.el.getAttribute('data-value'), text: text(picker.el) }, locales) ?? wanted;
-    });
-    return applied ?? wanted;
-  } finally {
-    closeDialog(dialog);
-  }
 }

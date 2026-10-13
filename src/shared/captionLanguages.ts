@@ -188,6 +188,33 @@ export function matchCaptionLanguage(option: LanguageOption, locales: readonly s
   return bare.find((l) => [l.name, ...(l.aliases ?? [])].some((n) => !n.includes('('))) ?? bare[0]!;
 }
 
+/**
+ * The caption language named somewhere inside a longer label, such as
+ * "Caption language: Armenian (Armenia)". The longest name found wins;
+ * among equals, the variant Meet lists without a qualifier.
+ */
+export function findCaptionLanguageIn(label: string, locales: readonly string[] = []): CaptionLanguage | null {
+  const hay = ` ${normalizeLanguageName(label)} `;
+  if (!hay.trim()) return null;
+  const names = displayNames(locales);
+  let best: { language: CaptionLanguage; length: number; bare: boolean } | null = null;
+  for (const language of CAPTION_LANGUAGES) {
+    const spellings = [
+      language.name,
+      ...(language.aliases ?? []),
+      ...names.map((dn) => safeDisplayName(dn, language.code)),
+      ...names.map((dn) => safeDisplayName(dn, primarySubtag(language.code))),
+    ];
+    const bare = [language.name, ...(language.aliases ?? [])].some((n) => !n.includes('('));
+    for (const spelling of spellings) {
+      const n = normalizeLanguageName(spelling);
+      if (!n || !hay.includes(` ${n} `)) continue;
+      if (!best || n.length > best.length || (n.length === best.length && bare && !best.bare)) best = { language, length: n.length, bare };
+    }
+  }
+  return best?.language ?? null;
+}
+
 function primarySubtag(tag: string): string {
   return tag.split('-')[0]!;
 }

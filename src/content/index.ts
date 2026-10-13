@@ -23,7 +23,7 @@ import {
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
-/** Let Meet finish rendering the captions band before its settings dialog is driven. */
+/** Let Meet start rendering the captions band after captions were switched on. */
 const LANGUAGE_SETTLE_MS = 800;
 /**
  * Announced on `document` when a controller starts. Chrome leaves the previous
@@ -178,25 +178,25 @@ class MeetController {
     if (code === MEET_DEFAULT_CAPTION_LANGUAGE) return;
     await new Promise((r) => window.setTimeout(r, LANGUAGE_SETTLE_MS));
     if (!this.captions.isRunning || this.disposed) return;
-    if (code === (readCaptionsLanguage()?.code ?? this.captionLanguage)) return;
     try {
       await this.setCaptionLanguage(code);
     } catch (error) {
       console.warn('[quilly] default caption language not applied:', error);
-      showToast(`Couldn’t switch captions to ${getCaptionLanguage(code)?.name ?? code}. Pick it in Meet’s caption settings.`);
+      showToast(`Couldn’t switch captions to ${getCaptionLanguage(code)?.name ?? code}. Pick it in Meet’s captions bar.`);
     }
   }
 
-  /** Drives Meet's settings dialog to the requested language; serialized so dialogs never overlap. */
+  /** Drives Meet's language picker to the requested language; serialized so popups never overlap. */
   private setCaptionLanguage(code: string): Promise<void> {
     const language = getCaptionLanguage(code);
     if (!language) return Promise.reject(new Error(`Unknown caption language “${code}”.`));
     if (!isInCall()) return Promise.reject(new Error('Join the call first; the caption language is set in Meet’s call settings.'));
     const job = this.languageQueue.then(async () => {
+      const before = readCaptionsLanguage()?.code ?? this.captionLanguage;
       const applied = await selectCaptionsLanguage(language);
       this.captionLanguage = applied.code;
       this.lastReported = null;
-      showToast(`Captions: ${applied.name}`);
+      if (applied.code !== before) showToast(`Captions: ${applied.name}`);
       if (applied.code !== language.code) throw new Error(`Meet kept “${applied.name}” instead of “${language.name}”.`);
     });
     this.languageQueue = job.catch(() => undefined);
