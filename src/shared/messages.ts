@@ -31,7 +31,7 @@ export type UiResponse = {
   'captions/setLanguage': MeetState;
 };
 
-// ---- background -> everyone (fire and forget) --------------------------------
+// ---- any context -> everyone (fire and forget) -------------------------------
 export type BroadcastMessage =
   | { type: 'sessions/changed'; sessionId?: string }
   | { type: 'entries/changed'; sessionId: string };
@@ -61,8 +61,16 @@ export async function sendToTab<T = unknown>(tabId: number, message: BackgroundT
   return unwrap(await chrome.tabs.sendMessage(tabId, message));
 }
 
+const localHandlers = new Set<(message: BroadcastMessage) => void>();
+
+/**
+ * Tells every extension context that data changed. Runtime messaging skips
+ * the sending context, so handlers registered here are called directly as well:
+ * a page that deletes a session refreshes the same way the side panel does.
+ */
 export function broadcast(message: BroadcastMessage): void {
-  // No listener is a normal condition (e.g. no extension page is open).
+  for (const handler of Array.from(localHandlers)) handler(message);
+  // No listener elsewhere is a normal condition (e.g. no other extension page is open).
   chrome.runtime.sendMessage(message).catch(() => undefined);
 }
 
@@ -71,8 +79,12 @@ export function onBroadcast(handler: (message: BroadcastMessage) => void): () =>
     const m = message as Partial<BroadcastMessage>;
     if (m?.type === 'sessions/changed' || m?.type === 'entries/changed') handler(m as BroadcastMessage);
   };
+  localHandlers.add(handler);
   chrome.runtime.onMessage.addListener(listener);
-  return () => chrome.runtime.onMessage.removeListener(listener);
+  return () => {
+    localHandlers.delete(handler);
+    chrome.runtime.onMessage.removeListener(listener);
+  };
 }
 
 export const errorEnvelope = (error: unknown): ErrorEnvelope => ({

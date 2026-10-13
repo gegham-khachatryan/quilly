@@ -7,7 +7,7 @@ import { SearchIcon, TrashIcon } from '../../ui/icons';
 import { navigate } from '../router';
 
 export function SessionsPage() {
-  const [sessions, refresh] = useSessions();
+  const [sessions] = useSessions();
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -20,7 +20,6 @@ export function SessionsPage() {
   const remove = async (id: string) => {
     if (!confirm('Delete this session and its transcript? This cannot be undone.')) return;
     await sessionsRepo.delete(id);
-    await refresh();
   };
 
   return (

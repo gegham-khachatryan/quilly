@@ -1,4 +1,5 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { broadcast } from './messages';
 import type { ChatMessage, Session, TranscriptEntry } from './types';
 
 interface QuillyDB extends DBSchema {
@@ -35,6 +36,11 @@ function normalizeEntry(entry: TranscriptEntry): TranscriptEntry {
   return { ...entry, kind: entry.kind ?? 'caption' };
 }
 
+/**
+ * Session writes announce themselves (`sessions/changed`) so every open
+ * surface (side panel, sessions list, detail page) refreshes, whichever
+ * context made the change.
+ */
 export const sessionsRepo = {
   async list(): Promise<Session[]> {
     const all = await (await db()).getAllFromIndex('sessions', 'byStartedAt');
@@ -46,6 +52,7 @@ export const sessionsRepo = {
   },
   async put(session: Session): Promise<void> {
     await (await db()).put('sessions', session);
+    broadcast({ type: 'sessions/changed', sessionId: session.id });
   },
   async listRecording(): Promise<Session[]> {
     return (await this.list()).filter((s) => s.status === 'recording');
@@ -58,10 +65,12 @@ export const sessionsRepo = {
       deleteBySession(tx.objectStore('chat'), id),
       tx.done,
     ]);
+    broadcast({ type: 'sessions/changed', sessionId: id });
   },
   async clearAll(): Promise<void> {
     const tx = (await db()).transaction(['sessions', 'entries', 'chat'], 'readwrite');
     await Promise.all([tx.objectStore('sessions').clear(), tx.objectStore('entries').clear(), tx.objectStore('chat').clear(), tx.done]);
+    broadcast({ type: 'sessions/changed' });
   },
 };
 

@@ -12,6 +12,9 @@ All notable changes to Quilly are documented here. The format follows
 ### Changed
 - "Hide caption overlay while recording" is off by default; captions stay visible in Meet unless the option is turned on.
 
+### Fixed
+- Deleting or renaming a session on the sessions or session page, or deleting all data, now updates the side panel's recent sessions and any other open Quilly page right away.
+
 ## [0.1.1] – 2026-10-12
 
 ### Fixed

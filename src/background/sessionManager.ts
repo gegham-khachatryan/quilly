@@ -92,7 +92,6 @@ export async function startRecording(tabId: number, known?: MeetState): Promise<
   await writeActive({ ...(await readActive()), [tabId]: session.id });
   await sendToTab(tabId, { type: 'capture/start', sessionId: session.id });
   await setRecordingIndicator(tabId, true);
-  broadcast({ type: 'sessions/changed', sessionId: session.id });
   return session;
 }
 
@@ -128,7 +127,6 @@ async function finalizeSession(sessionId: string): Promise<Session | null> {
     speakers: Array.from(new Set(captions.map((e) => e.speaker))),
   };
   await sessionsRepo.put(completed);
-  broadcast({ type: 'sessions/changed', sessionId });
   return completed;
 }
 
@@ -189,7 +187,6 @@ export async function handleMeetState(tabId: number, state: MeetState): Promise<
     if (!state.capturing) await sendToTab(tabId, { type: 'capture/start', sessionId: active.id }).catch(() => undefined);
     if (state.title && state.title !== active.title && active.title === active.meetingCode) {
       await sessionsRepo.put({ ...active, title: state.title });
-      broadcast({ type: 'sessions/changed', sessionId: active.id });
     }
     await setRecordingIndicator(tabId, true);
     return;
