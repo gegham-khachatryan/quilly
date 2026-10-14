@@ -60,7 +60,7 @@ The extension contains no analytics, tracking, advertising or crash reporting.
 | --- | --- |
 | `storage`, `unlimitedStorage` | Keep sessions, transcripts, chats and settings locally; long meetings exceed the default quota. |
 | `sidePanel` | Show the live transcript in Chrome's side panel. |
-| `alarms` | Only while *Local agents* is on: wake the extension every 30 seconds to look for a paired `quilly-mcp` process on this computer. |
+| `alarms` | Only while *Local agents* is on: wake the extension every 30 seconds to 2 minutes to look for a paired `quilly-mcp` process on this computer. |
 | `scripting` | Load Quilly into Meet tabs that were already open when it was installed or updated, so recording works without reloading them. Used only on `meet.google.com`. |
 | Host access to `meet.google.com` | Read captions and control the captions button on Meet pages. |
 | Host access to `openrouter.ai` | Call the OpenRouter API on your behalf when you use AI features. |

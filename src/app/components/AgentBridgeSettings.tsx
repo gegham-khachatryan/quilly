@@ -89,7 +89,7 @@ function ConnectionStatus({ status }: { status: ReturnType<typeof useAgentBridge
     <div className="flex items-center gap-2 text-xs">
       <span className={`inline-block h-2 w-2 rounded-full ${connections.length ? 'bg-emerald-400' : 'bg-line'}`} />
       {connections.length === 0 ? (
-        <span className="text-muted">No agent connected. Quilly checks every 30 seconds while an agent with the token is running.</span>
+        <span className="text-muted">No agent connected. Quilly checks every few seconds while this page is open, and every 30 seconds to 2 minutes otherwise.</span>
       ) : (
         <span>
           Connected to {connections.map((c) => `${agentLabel(c.bridge.agent)} (port ${c.port})`).join(', ')}

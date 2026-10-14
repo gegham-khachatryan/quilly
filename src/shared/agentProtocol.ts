@@ -18,6 +18,15 @@ export const AGENT_BRIDGE_PORT_SPAN = 4;
 /** The bridge pings at this interval; Chrome keeps the worker alive while frames arrive within 30 s. */
 export const AGENT_BRIDGE_PING_MS = 20_000;
 
+/**
+ * How often the extension looks for bridges: the minimum right after local
+ * agents are switched on or a bridge was found, doubling to the maximum while
+ * nothing new turns up. A bridge waits for the maximum before failing a tool
+ * call with "not connected", so a probe is guaranteed to fall inside the wait.
+ */
+export const AGENT_BRIDGE_PROBE_MIN_MS = 30_000;
+export const AGENT_BRIDGE_PROBE_MAX_MS = 120_000;
+
 // ---- requests: bridge -> extension ------------------------------------------
 export type AgentRequest =
   | { type: 'sessions/list'; query?: string; speaker?: string; status?: SessionStatus; limit?: number }

@@ -1,5 +1,7 @@
 import {
   AGENT_BRIDGE_PORT_SPAN,
+  AGENT_BRIDGE_PROBE_MAX_MS,
+  AGENT_BRIDGE_PROBE_MIN_MS,
   AGENT_PROTOCOL_VERSION,
   parseFrame,
   proofFor,
@@ -23,13 +25,21 @@ import type { Session, Settings } from '../shared/types';
  *
  * A bridge (`quilly-mcp`) cannot reach into the extension, so the worker goes
  * looking for one: every port in the configured range is probed on worker
- * start and on a periodic alarm, and each bridge found gets its own socket.
- * While a socket is open the bridge pings every 20 s, which keeps this worker
- * alive; when none is running the worker suspends as usual and the alarm wakes
- * it to try again.
+ * start and on an alarm, and each bridge found gets its own socket. While a
+ * socket is open the bridge pings every 20 s, which keeps this worker alive;
+ * when none is running the worker suspends as usual and the alarm wakes it to
+ * try again.
+ *
+ * Chrome logs every refused probe as an extension error, so the alarm backs
+ * off while probes keep coming up empty: each one doubles the delay from the
+ * minimum to the maximum, and finding a bridge, a settings change or the
+ * settings page asking for status brings it back to the minimum. The count
+ * lives in session storage because the worker is suspended between alarms.
  */
 const ALARM = 'agent-bridge';
-const RETRY_MINUTES = 0.5;
+const EMPTY_PROBES_KEY = 'agentBridgeEmptyProbes';
+/** The settings page polls for status every couple of seconds; it gets a fresh probe at most this often. */
+const STATUS_PROBE_GAP_MS = 5_000;
 /** Close codes in the application range so logs tell handshake failures apart from network ones. */
 const CLOSE_BAD_PROOF = 4001;
 const CLOSE_BAD_VERSION = 4002;
@@ -44,8 +54,16 @@ interface Connection {
 }
 
 const connections = new Map<number, Connection>();
-/** Token + port the open sockets were made with; a change closes them all. */
-let configKey = '';
+/** Token + port the open sockets were made with; a change closes them all. Null until the first sync. */
+let configKey: string | null = null;
+let lastProbeAt = 0;
+
+/**
+ * When a sync probes: `always`; `throttled`, at most every STATUS_PROBE_GAP_MS
+ * for a polling settings page; `unless-scheduled`, only when no alarm is
+ * pending, so a worker restart does not add probes between alarms.
+ */
+type ProbePolicy = 'always' | 'throttled' | 'unless-scheduled';
 
 export function startAgentBridge(): void {
   chrome.alarms.onAlarm.addListener((alarm) => {
@@ -55,34 +73,59 @@ export function startAgentBridge(): void {
   onBroadcast((event) => {
     for (const conn of readyConnections()) send(conn.socket, { type: 'event', event });
   });
-  void sync();
+  void sync(undefined, 'unless-scheduled');
 }
 
 /** Current connections; also kicks off a probe so a page polling this sees a fresh bridge quickly. */
 export async function getAgentBridgeStatus(): Promise<AgentBridgeStatus> {
-  const settings = await sync();
+  await setEmptyProbes(0); // someone is watching: back to the fast cadence
+  const settings = await sync(undefined, 'throttled');
   return {
     enabled: settings.agentBridgeEnabled,
     connections: readyConnections().map((c) => ({ port: c.port, bridge: c.bridge! })),
   };
 }
 
-async function sync(settings?: Settings): Promise<Settings> {
+/** Applies the settings and, per `policy`, probes for bridges. */
+async function sync(settings?: Settings, policy: ProbePolicy = 'always'): Promise<Settings> {
   const current = settings ?? (await getSettings());
   const key = current.agentBridgeEnabled && current.agentBridgeToken ? `${current.agentBridgeToken}:${current.agentBridgePort}` : '';
-  if (key !== configKey) {
-    configKey = key;
+  if (configKey !== null && key !== configKey) {
     closeAll(CLOSE_RECONFIGURED);
+    await setEmptyProbes(0);
   }
+  configKey = key;
   if (!key) {
     await chrome.alarms.clear(ALARM);
     return current;
   }
-  if (!(await chrome.alarms.get(ALARM))) await chrome.alarms.create(ALARM, { periodInMinutes: RETRY_MINUTES });
-  for (let port = current.agentBridgePort; port < current.agentBridgePort + AGENT_BRIDGE_PORT_SPAN; port++) {
-    if (!connections.has(port)) connect(port, current.agentBridgeToken);
-  }
+  const due =
+    policy === 'always' ||
+    (policy === 'throttled' && Date.now() - lastProbeAt >= STATUS_PROBE_GAP_MS) ||
+    (policy === 'unless-scheduled' && !(await chrome.alarms.get(ALARM)));
+  if (due) await probe(current);
   return current;
+}
+
+/** Opens a socket to every port without one and schedules the next probe with the current back-off. */
+async function probe(settings: Settings): Promise<void> {
+  lastProbeAt = Date.now();
+  for (let port = settings.agentBridgePort; port < settings.agentBridgePort + AGENT_BRIDGE_PORT_SPAN; port++) {
+    if (!connections.has(port)) connect(port, settings.agentBridgeToken);
+  }
+  const emptyProbes = await getEmptyProbes();
+  const delayMs = Math.min(AGENT_BRIDGE_PROBE_MIN_MS * 2 ** emptyProbes, AGENT_BRIDGE_PROBE_MAX_MS);
+  await setEmptyProbes(emptyProbes + 1); // a bridge reporting ready resets this
+  await chrome.alarms.create(ALARM, { delayInMinutes: delayMs / 60_000 });
+}
+
+async function getEmptyProbes(): Promise<number> {
+  const value = (await chrome.storage.session.get(EMPTY_PROBES_KEY))[EMPTY_PROBES_KEY];
+  return typeof value === 'number' ? value : 0;
+}
+
+async function setEmptyProbes(count: number): Promise<void> {
+  await chrome.storage.session.set({ [EMPTY_PROBES_KEY]: count });
 }
 
 function readyConnections(): Connection[] {
@@ -122,6 +165,8 @@ async function onFrame(conn: Connection, frame: BridgeFrame, token: string, ourN
       return send(socket, { type: 'auth', proof: await proofFor(token, frame.nonce) });
     }
     case 'ready':
+      conn.bridge = frame.bridge;
+      return setEmptyProbes(0);
     case 'identify':
       conn.bridge = frame.bridge;
       return;
