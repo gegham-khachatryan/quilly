@@ -1,6 +1,6 @@
 {
   "name": "quilly",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "Quilly – transcripts for Google Meet. Records captions locally, exports them, lets you iterate on them with AI via OpenRouter, and serves them to local MCP agents such as Claude Code.",
