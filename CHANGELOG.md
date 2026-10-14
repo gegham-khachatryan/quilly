@@ -5,6 +5,12 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] – 2026-10-14
+
+### Changed
+- The search for a running `quilly-mcp` backs off from every 30 seconds to every 2 minutes while nothing is found, and returns to 30 seconds when a bridge connects, the setting changes or the settings page is open. Chrome records every refused probe as an extension error in developer mode; this keeps that list short.
+- `quilly-mcp` 0.1.1: a tool call made before the extension has connected waits for it (up to 2 minutes 10 seconds) instead of failing at once. While Chrome stays closed, later calls fail fast for the length of one wait.
+
 ## [0.3.0] – 2026-10-14
 
 ### Added
