@@ -3,6 +3,15 @@
 All notable changes to Quilly are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow SemVer.
 
+## [Unreleased]
+
+### Added
+- Local agents. Settings → Local agents pairs Quilly with `quilly-mcp`, an MCP server published from `packages/quilly-mcp`, so Claude Code, Cursor, Codex or any MCP client can list, search and read transcripts straight from the extension, with no export. `wait_for_updates` follows the meeting being recorded as captions arrive. Read-only, off by default, localhost only, mutual token handshake; the settings page shows which agent is connected and the exact setup command.
+- `alarms` permission, used only while local agents are on to look for a running server every 30 seconds.
+
+### Changed
+- `npm run check` now also typechecks and bundles `packages/quilly-mcp`; the repo is an npm workspace.
+
 ## [0.2.0] – 2026-10-13
 
 ### Added

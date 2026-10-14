@@ -1,6 +1,6 @@
 # Quilly privacy policy
 
-_Last updated: 9 October 2026_
+_Last updated: 14 October 2026_
 
 Quilly ("the extension") is a Chrome extension that records Google Meet captions into a local
 transcript. This page explains what data the extension handles, where it goes, and what control you
@@ -10,7 +10,8 @@ have over it.
 
 - Everything Quilly records is stored **only in your browser**. There is no Quilly server and no account.
 - Nothing is sent anywhere unless **you** use an AI feature, in which case the transcript and your
-  question are sent to **OpenRouter** using **your own API key**.
+  question are sent to **OpenRouter** using **your own API key**, or **you** switch on *Local agents*,
+  in which case AI tools running **on your own computer** can read transcripts over a local connection.
 - The developer never receives your transcripts, your API key, or any analytics.
 
 ## What the extension stores locally
@@ -21,8 +22,8 @@ Stored in your browser profile (IndexedDB and `chrome.storage.local`):
   caption, hand-raise and emoji-reaction events, and timestamps.
 - **Session metadata**: meeting code, meeting title, the Meet URL, start and end time.
 - **AI chats**: the questions you ask and the answers you receive in the "Ask AI" panel, per session.
-- **Settings**: auto-start and capture preferences, the OpenRouter model you selected, and your
-  **OpenRouter API key**.
+- **Settings**: auto-start and capture preferences, the OpenRouter model you selected, your
+  **OpenRouter API key**, and the pairing token for local agents if you enabled them.
 
 This data never leaves your device through the extension except as described below.
 
@@ -40,6 +41,17 @@ This data never leaves your device through the extension except as described bel
 - **Google Meet (meet.google.com)** – the extension runs on Meet pages to read the captions region,
   switch captions on, and detect whether you are in a call. It does not send anything to Google.
 
+## Local agents (optional)
+
+*Settings → Local agents* is off by default. When you switch it on, the extension connects to a
+`quilly-mcp` process on **your own computer** (localhost only) that an AI coding tool such as Claude
+Code, Cursor or Codex runs on your behalf, and answers its requests to list, search and read
+transcripts, including a recording in progress. The process must prove it holds the pairing token
+shown in Settings before anything is exchanged, and it can only read; it cannot start, stop, rename or
+delete recordings. What the agent then does with a transcript, including sending it to the AI
+provider behind that tool, is governed by that tool's own privacy policy. Switching the setting off
+or regenerating the token ends the access.
+
 The extension contains no analytics, tracking, advertising or crash reporting.
 
 ## Permissions
@@ -48,6 +60,7 @@ The extension contains no analytics, tracking, advertising or crash reporting.
 | --- | --- |
 | `storage`, `unlimitedStorage` | Keep sessions, transcripts, chats and settings locally; long meetings exceed the default quota. |
 | `sidePanel` | Show the live transcript in Chrome's side panel. |
+| `alarms` | Only while *Local agents* is on: wake the extension every 30 seconds to look for a paired `quilly-mcp` process on this computer. |
 | `scripting` | Load Quilly into Meet tabs that were already open when it was installed or updated, so recording works without reloading them. Used only on `meet.google.com`. |
 | Host access to `meet.google.com` | Read captions and control the captions button on Meet pages. |
 | Host access to `openrouter.ai` | Call the OpenRouter API on your behalf when you use AI features. |
@@ -57,6 +70,8 @@ The extension contains no analytics, tracking, advertising or crash reporting.
 - Delete a single session from its page, or everything from **Settings → Danger zone**.
 - Removing the extension deletes all of its local data.
 - AI features are off until you enter an API key, and each request is initiated by you.
+- Local agents are off until you switch them on and pair a tool with the token; Settings shows which
+  agent is connected.
 
 ## Recording consent
 

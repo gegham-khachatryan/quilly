@@ -20,6 +20,7 @@ your own OpenRouter key. Everything stays in your browser.
 - **Ask AI.** Summary, action items, decisions, a follow-up email, or any question about the meeting. Streaming answers, Markdown rendering, chats saved per session.
 - **Every meeting, searchable.** Sessions with search, speaker filter, rename and delete. Export as `.txt`, `.md`, `.json` or copy to the clipboard.
 - **Your key, any model.** The picker searches OpenRouter's live catalogue with provider, price and context length. No Quilly account, no server.
+- **Local agents.** Claude Code, Cursor, Codex or any MCP client can list, search and read your transcripts through [`quilly-mcp`](packages/quilly-mcp), and follow the meeting being recorded as it happens. Nothing is exported and nothing leaves the computer.
 
 ### In detail
 
@@ -28,7 +29,8 @@ your own OpenRouter key. Everything stays in your browser.
 - **Caption language.** A default caption language in Settings is applied whenever a recording starts, and the live panel has a dropdown to switch the language of the current call. Quilly picks it in the language chip of Meet’s captions band and mirrors whatever the chip shows; nothing is sent anywhere else.
 - **Background tabs.** Meet stops rendering captions in a hidden tab. A small main-world shim keeps them flowing while a recording is active and is inert otherwise.
 - **Hand raises and reactions** are recorded as events in the transcript, exported with it and visible to the AI.
-- **Private by design.** Transcripts, chats and settings live in IndexedDB and `chrome.storage.local`. The only outbound traffic is to OpenRouter, when you ask the AI panel a question, and to Google's favicon service for provider logos in the model picker. No analytics. [Privacy policy](https://gegham-khachatryan.github.io/quilly/privacy).
+- **Local agents (MCP).** Off by default. Settings issues a pairing token and the one-line `claude mcp add …` command (plus JSON for other clients). The extension looks for a running `quilly-mcp` on localhost every 30 seconds and connects to it; both sides prove they hold the token before anything is exchanged. Agents get `list_sessions`, `get_session`, `search_transcripts` and `wait_for_updates`, which blocks until a live recording gains new captions. Read-only.
+- **Private by design.** Transcripts, chats and settings live in IndexedDB and `chrome.storage.local`. The only outbound traffic is to OpenRouter, when you ask the AI panel a question, to Google's favicon service for provider logos in the model picker, and to a paired `quilly-mcp` on your own machine if you enable local agents. No analytics. [Privacy policy](https://gegham-khachatryan.github.io/quilly/privacy).
 
 ## Install
 
@@ -51,7 +53,8 @@ the reload icon on the extension card.
 | ------------------------- | -------------------------------------------------------------------- |
 | `npm run build`           | Pages + service worker (ESM) and the content script (IIFE) into `dist/` |
 | `npm run typecheck`       | `tsc --noEmit`                                                       |
-| `npm run check`           | typecheck then build                                                 |
+| `npm run check`           | typecheck then build, for the extension and then `packages/quilly-mcp` |
+| `npm run check -w quilly-mcp` | typecheck and bundle the MCP server into `packages/quilly-mcp/dist/` |
 | `npm run icons`           | Re-render `public/icons/*.png` from the SVG sources (headless Chrome) |
 | `npm run screenshots`     | Frame `docs/screenshots/raw/*.png` into store-ready 1280×800 images  |
 | `npm run store-assets`    | Promo tile and marquee PNGs in `store/out/`                          |
@@ -61,14 +64,16 @@ the reload icon on the extension card.
 
 ```
 src/
-  shared/      types, message contracts, settings, caption language catalogue, IndexedDB repos, OpenRouter client, exports
+  shared/      types, message contracts, settings, caption language catalogue, IndexedDB repos, OpenRouter client, exports, agent bridge protocol
   content/     runs on meet.google.com: call detection, captions/events observers, captions-control guard, caption language switch
-  background/  service worker: session lifecycle, persistence, toolbar icon, shortcut
+  background/  service worker: session lifecycle, persistence, toolbar icon, shortcut, agent bridge client
   sidepanel/   start/stop, auto-start toggle, live transcript of any active recording with its caption language, recent sessions
   app/         sessions list, session detail (+ AI panel), settings
   ui/          React hooks and components shared by both surfaces
 public/
   keepalive.js main world: visibility + animation-frame shim while recording
+packages/
+  quilly-mcp/  MCP server (npm package) that local agents run; bundles src/shared/agentProtocol.ts and transcript.ts
 ```
 
 The content script polls call state and reports it to the background. On `inCall` with auto-start
@@ -79,6 +84,14 @@ observer picks up hand-raise toasts and reaction bubbles. Entries are upserted i
 background, which broadcasts changes so open pages refresh live. Active recordings are kept in
 `chrome.storage.session` so they survive the service worker being suspended; on worker start,
 sessions whose tabs are gone are finalized.
+
+The agent bridge is the only path to the data besides the extension's own pages. `quilly-mcp` listens
+on a localhost port; the service worker probes the configured port range on start and on a 30-second
+alarm and keeps a socket per bridge it finds. The handshake is mutual HMAC over nonces keyed with the
+pairing token, the bridge proving itself first, so transcripts are never sent to an unpaired listener.
+Requests are typed in `src/shared/agentProtocol.ts`, answered in `src/background/agentBridge.ts` from the
+repos, and change broadcasts are forwarded as events so `wait_for_updates` can follow a live recording.
+The bridge's 20-second pings are what keep the worker alive while an agent is attached.
 
 Google changes Meet's class names often. Everything DOM-specific lives in `src/content/meetDom.ts`
 and prefers ARIA attributes and structure over class names. If captures stop after a Meet update, that
