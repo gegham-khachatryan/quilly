@@ -25,9 +25,9 @@ this process over localhost and answers each request from its own database.
    }
    ```
 
-Node.js 20 or newer is required. The extension looks for a running server every 30 seconds, so the
-tools are available shortly after the agent starts. Quilly's settings page shows which agent is
-connected.
+Node.js 20 or newer is required. The extension looks for a running server every 30 seconds to 2
+minutes, and the first tool call waits for it, so the tools work shortly after the agent starts. Quilly's settings page shows which
+agent is connected.
 
 ## Tools
 

@@ -3,6 +3,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import {
   AGENT_BRIDGE_PING_MS,
   AGENT_BRIDGE_PORT_SPAN,
+  AGENT_BRIDGE_PROBE_MAX_MS,
   AGENT_PROTOCOL_VERSION,
   parseFrame,
   proofFor,
@@ -27,13 +28,23 @@ import {
  */
 const HANDSHAKE_TIMEOUT_MS = 5_000;
 const REQUEST_TIMEOUT_MS = 15_000;
+/**
+ * A request made before any extension has connected waits this long for one:
+ * the extension probes at least this often (plus slack for alarm jitter), so
+ * the first tool call after start-up succeeds instead of asking for a retry.
+ * While the wait keeps timing out, as when Chrome is closed, requests fail
+ * fast until a full wait has passed since the last one, so an absent extension
+ * costs the agent one wait rather than one per call.
+ */
+const CONNECT_WAIT_MS = AGENT_BRIDGE_PROBE_MAX_MS + 10_000;
 
 export class NotConnectedError extends Error {
-  constructor() {
+  constructor(waitedMs: number) {
+    const waited = waitedMs > 0 ? `No extension connected within ${Math.round(waitedMs / 1000)} seconds. ` : 'The Quilly extension is not connected. ';
     super(
-      'The Quilly extension is not connected. Make sure Chrome is running with Quilly installed, ' +
-        '"Allow local agents to read transcripts" is on in Quilly’s settings, and the token there matches QUILLY_TOKEN. ' +
-        'The extension connects within about 30 seconds; try again shortly.',
+      waited +
+        'Make sure Chrome is running with Quilly installed, "Allow local agents to read transcripts" is on in Quilly’s settings, ' +
+        'and the token there matches QUILLY_TOKEN. The extension looks for this server every 30 seconds to 2 minutes; try again shortly.',
     );
     this.name = 'NotConnectedError';
   }
@@ -53,6 +64,9 @@ export class Bridge {
   readonly port: number;
   private readonly peers = new Set<Peer>();
   private readonly listeners = new Set<EventListener>();
+  /** Requests waiting for the first peer to finish its handshake. */
+  private readonly connectWaiters = new Set<() => void>();
+  private lastConnectWaitTimedOutAt = 0;
   private identity: BridgeIdentity;
   private nextId = 1;
   private readonly pingTimer: NodeJS.Timeout;
@@ -156,8 +170,7 @@ export class Bridge {
   }
 
   private async fanOut<R extends AgentRequest>(request: R): Promise<AgentResponse[R['type']][]> {
-    const peers = this.readyPeers();
-    if (peers.length === 0) throw new NotConnectedError();
+    const peers = await this.peersForRequest();
     const results = await Promise.allSettled(peers.map((peer) => this.request<AgentResponse[R['type']]>(peer, request)));
     const values: AgentResponse[R['type']][] = [];
     let firstFailure: unknown;
@@ -167,6 +180,33 @@ export class Bridge {
     }
     if (values.length === 0) throw firstFailure;
     return values;
+  }
+
+  /** Ready peers, after waiting for the extension to show up if none has yet. */
+  private async peersForRequest(): Promise<Peer[]> {
+    let peers = this.readyPeers();
+    if (peers.length > 0) return peers;
+    if (Date.now() - this.lastConnectWaitTimedOutAt < CONNECT_WAIT_MS) throw new NotConnectedError(0);
+    const connected = await this.waitForPeer(CONNECT_WAIT_MS);
+    peers = this.readyPeers();
+    if (peers.length > 0) return peers;
+    if (!connected) this.lastConnectWaitTimedOutAt = Date.now();
+    throw new NotConnectedError(CONNECT_WAIT_MS);
+  }
+
+  /** Resolves true when a peer completes the handshake, false after `timeoutMs`. */
+  private waitForPeer(timeoutMs: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const waiter = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      const timer = setTimeout(() => {
+        this.connectWaiters.delete(waiter);
+        resolve(false);
+      }, timeoutMs);
+      this.connectWaiters.add(waiter);
+    });
   }
 
   private request<T>(peer: Peer, request: AgentRequest): Promise<T> {
@@ -198,7 +238,7 @@ export class Bridge {
       this.peers.delete(peer);
       for (const { reject, timer } of peer.pending.values()) {
         clearTimeout(timer);
-        reject(new NotConnectedError());
+        reject(new NotConnectedError(0));
       }
       peer.pending.clear();
     });
@@ -221,7 +261,10 @@ export class Bridge {
           return peer.socket.close(4001);
         }
         peer.ready = true;
-        return send(peer.socket, { type: 'ready', bridge: this.identity });
+        send(peer.socket, { type: 'ready', bridge: this.identity });
+        for (const waiter of this.connectWaiters) waiter();
+        this.connectWaiters.clear();
+        return;
       }
       case 'response': {
         const pending = peer.pending.get(frame.id);

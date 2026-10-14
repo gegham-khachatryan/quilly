@@ -1,6 +1,6 @@
 {
   "name": "quilly-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server that lets local AI agents list, search and read Google Meet transcripts recorded by the Quilly Chrome extension, including the one being recorded.",
   "license": "MIT",
   "author": "Gegham Khachatryan",
@@ -10,12 +10,22 @@
     "directory": "packages/quilly-mcp"
   },
   "homepage": "https://github.com/gegham-khachatryan/quilly/tree/main/packages/quilly-mcp#readme",
-  "keywords": ["mcp", "model-context-protocol", "google-meet", "transcript", "claude-code", "quilly"],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-meet",
+    "transcript",
+    "claude-code",
+    "quilly"
+  ],
   "type": "module",
   "bin": {
     "quilly-mcp": "dist/cli.js"
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "engines": {
     "node": ">=20"
   },
