@@ -3,13 +3,16 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Quilly – transcripts for Google Meet. Records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
+  "description": "Quilly \u2013 transcripts for Google Meet. Records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
   "license": "MIT",
   "author": "Gegham Khachatryan",
   "repository": {
     "type": "git",
     "url": "https://github.com/gegham-khachatryan/quilly"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "dev": "vite build --watch",
     "build": "vite build && vite build --config vite.content.config.ts",
@@ -17,7 +20,7 @@
     "store-assets": "node scripts/make-store-assets.mjs",
     "screenshots": "node scripts/make-screenshots.mjs",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run build",
+    "check": "npm run typecheck && npm run build && npm run check -w quilly-mcp",
     "sync-version": "node scripts/sync-version.mjs",
     "version": "npm run sync-version && git add public/manifest.json",
     "package": "node scripts/package.mjs",
