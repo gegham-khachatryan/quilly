@@ -6,7 +6,7 @@ Copy for the developer dashboard. Keep in sync with `public/manifest.json`.
 
 **Name** (≤ 75): `Quilly – transcripts for Google Meet`
 
-**Summary** (≤ 132): `Transcripts for Google Meet. Records captions locally with speaker and time, exports them, and answers questions with your AI key.`
+**Summary** (≤ 132): `Transcripts for Google Meet. Records captions locally, exports them, asks your AI about them and shares them with local agents.`
 
 **Category**: Productivity → Workflow & Planning · **Language**: English
 
@@ -34,9 +34,15 @@ ASK AI ABOUT A MEETING (OPTIONAL)
 • Add your own OpenRouter API key and choose any model.
 • One click gives you a summary, action items, decisions or a follow-up email. Or ask your own questions about what was discussed.
 
+LET YOUR OWN AI AGENTS READ YOUR MEETINGS (OPTIONAL)
+• Claude Code, Cursor, Codex or any MCP client can list, search and read your transcripts, and follow the meeting being recorded as it happens.
+• Switch on Local agents in Settings, run the one-line setup command it shows you, and the agent connects to Quilly over your own computer. Nothing is exported and nothing leaves your machine.
+• Read-only, off by default, and protected by a pairing token you can revoke at any time. Settings shows which agent is connected.
+
 YOUR DATA STAYS WITH YOU
 • Transcripts, settings and AI chats live only in your browser. No account, no Quilly servers, no analytics.
 • The only time a transcript leaves your computer is when you ask the AI a question. It then goes to OpenRouter, using your key, and nowhere else.
+• Local agents read transcripts over a connection that never leaves your computer, and only after you switch them on and pair them.
 
 Quilly is not affiliated with Google. Depending on where you live, recording a conversation may require the consent of everyone in it. Please check before you record.
 ```

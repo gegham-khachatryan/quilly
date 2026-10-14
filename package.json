@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Quilly \u2013 transcripts for Google Meet. Records captions locally, exports them, and lets you iterate on them with AI via OpenRouter.",
+  "description": "Quilly – transcripts for Google Meet. Records captions locally, exports them, lets you iterate on them with AI via OpenRouter, and serves them to local MCP agents such as Claude Code.",
   "license": "MIT",
   "author": "Gegham Khachatryan",
   "repository": {
