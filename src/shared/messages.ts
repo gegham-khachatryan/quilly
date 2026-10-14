@@ -1,3 +1,4 @@
+import type { AgentBridgeStatus } from './agentProtocol';
 import type { ActiveRecording, CaptionUpsert, MeetState, Session, TabRecordingState } from './types';
 
 // ---- content -> background -------------------------------------------------
@@ -20,7 +21,9 @@ export type UiMessage =
   | { type: 'recording/stop'; tabId: number }
   | { type: 'recording/active' }
   | { type: 'tab/focus'; tabId: number }
-  | { type: 'captions/setLanguage'; tabId: number; language: string };
+  | { type: 'captions/setLanguage'; tabId: number; language: string }
+  /** Which local agent bridges the worker is connected to; also nudges a reconnect attempt. */
+  | { type: 'agent/status' };
 
 export type UiResponse = {
   'tab/getState': TabRecordingState;
@@ -29,6 +32,7 @@ export type UiResponse = {
   'recording/active': ActiveRecording[];
   'tab/focus': void;
   'captions/setLanguage': MeetState;
+  'agent/status': AgentBridgeStatus;
 };
 
 // ---- any context -> everyone (fire and forget) -------------------------------

@@ -59,6 +59,12 @@ export interface Settings {
   captionLanguage: string;
   openRouterApiKey: string;
   model: string;
+  /** Let a local agent bridge (quilly-mcp) read sessions over localhost; see agentProtocol.ts. */
+  agentBridgeEnabled: boolean;
+  /** Shared secret the bridge must prove it holds before anything is exchanged. Empty until first enabled. */
+  agentBridgeToken: string;
+  /** First port the extension looks for a bridge on. */
+  agentBridgePort: number;
 }
 
 /** State of Meet's native captions, which are the transcript source. */

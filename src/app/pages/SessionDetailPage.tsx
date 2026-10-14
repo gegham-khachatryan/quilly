@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState, type CSSProperties } from 'react';
 import { sessionsRepo } from '../../shared/db';
 import { formatDateTime, formatDuration, pluralize } from '../../shared/format';
-import { countCaptions, downloadText, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
+import { countCaptions, exportFilename, renderExport, transcriptToText, type ExportFormat } from '../../shared/transcript';
+import { downloadText } from '../../ui/download';
 import { Empty, ParticipantsStack, StatusBadge, TranscriptList } from '../../ui/components';
 import { EditableTitle } from '../../ui/EditableTitle';
 import { useEntries, useSession, useStickToBottom } from '../../ui/hooks';

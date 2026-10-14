@@ -1,5 +1,6 @@
 import { errorEnvelope, type ContentMessage, type UiMessage, type UiResponse } from '../shared/messages';
 import type { TabRecordingState } from '../shared/types';
+import { getAgentBridgeStatus, startAgentBridge } from './agentBridge';
 import { forgetTab, getMeetState, injectIntoOpenMeetTabs, setCaptionLanguage } from './contentScripts';
 import {
   flashBadge,
@@ -59,6 +60,7 @@ chrome.commands.onCommand.addListener((command, tab) => {
 });
 
 void reconcile();
+startAgentBridge();
 
 async function handle(message: Inbound, sender: chrome.runtime.MessageSender): Promise<unknown> {
   switch (message.type) {
@@ -85,6 +87,8 @@ async function handle(message: Inbound, sender: chrome.runtime.MessageSender): P
       return;
     case 'captions/setLanguage':
       return setCaptionLanguage(message.tabId, message.language) satisfies Promise<UiResponse['captions/setLanguage']>;
+    case 'agent/status':
+      return getAgentBridgeStatus() satisfies Promise<UiResponse['agent/status']>;
   }
 }
 

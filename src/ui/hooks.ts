@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { chatRepo, entriesRepo, sessionsRepo } from '../shared/db';
 import { onBroadcast, sendToBackground } from '../shared/messages';
 import { getSettings, onSettingsChange, updateSettings } from '../shared/settings';
+import type { AgentBridgeStatus } from '../shared/agentProtocol';
 import type { ActiveRecording, ChatMessage, Session, Settings, TabRecordingState, TranscriptEntry } from '../shared/types';
 
 export function useSettings(): [Settings | null, (patch: Partial<Settings>) => Promise<void>] {
@@ -69,6 +70,26 @@ export function useActiveRecordings(pollMs = 1000): [ActiveRecording[] | null, (
     };
   }, [refresh, pollMs]);
   return [active, refresh];
+}
+
+/** Bridges the worker is connected to; polling also makes the worker probe for new ones. */
+export function useAgentBridgeStatus(enabled: boolean, pollMs = 2000): AgentBridgeStatus | null {
+  const [status, setStatus] = useState<AgentBridgeStatus | null>(null);
+  useEffect(() => {
+    if (!enabled) return setStatus(null);
+    let cancelled = false;
+    const refresh = async () => {
+      const next = await sendToBackground({ type: 'agent/status' }).catch(() => null);
+      if (!cancelled) setStatus(next);
+    };
+    void refresh();
+    const timer = setInterval(() => void refresh(), pollMs);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [enabled, pollMs]);
+  return status;
 }
 
 export function useSessions(): [Session[] | null, () => Promise<void>] {

@@ -1,3 +1,4 @@
+import { AGENT_BRIDGE_DEFAULT_PORT } from './agentProtocol';
 import { MEET_DEFAULT_CAPTION_LANGUAGE } from './captionLanguages';
 import type { Settings } from './types';
 
@@ -10,6 +11,9 @@ export const DEFAULT_SETTINGS: Settings = {
   captionLanguage: MEET_DEFAULT_CAPTION_LANGUAGE,
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
+  agentBridgeEnabled: false,
+  agentBridgeToken: '',
+  agentBridgePort: AGENT_BRIDGE_DEFAULT_PORT,
 };
 
 export async function getSettings(): Promise<Settings> {

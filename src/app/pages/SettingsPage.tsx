@@ -3,6 +3,7 @@ import { sessionsRepo } from '../../shared/db';
 import { CaptionLanguageSelect } from '../../ui/CaptionLanguageSelect';
 import { Toggle } from '../../ui/components';
 import { useSettings } from '../../ui/hooks';
+import { AgentBridgeSettings } from '../components/AgentBridgeSettings';
 import { ModelPicker } from '../components/ModelPicker';
 
 export function SettingsPage() {
@@ -90,6 +91,8 @@ export function SettingsPage() {
           <ModelPicker value={settings.model} onChange={(model) => void update({ model })} />
         </div>
       </section>
+
+      <AgentBridgeSettings settings={settings} update={update} />
 
       <section className="card space-y-3 border-rec/30 p-4">
         <h2 className="text-sm font-semibold text-rec">Danger zone</h2>
