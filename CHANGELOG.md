@@ -5,6 +5,11 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] – 2026-10-15
+
+### Removed
+- Caption language switching: the default caption language setting and the live panel's language dropdown. Driving Meet's language chip did not work reliably, so the caption language is now left to Meet. A stored default is ignored.
+
 ## [0.3.1] – 2026-10-14
 
 ### Changed
