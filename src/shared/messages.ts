@@ -10,9 +10,7 @@ export type ContentMessage =
 export type BackgroundToContentMessage =
   | { type: 'capture/start'; sessionId: string }
   | { type: 'capture/stop' }
-  | { type: 'meet/getState' }
-  /** Switch Meet's caption language; the response is the state after the change. */
-  | { type: 'captions/setLanguage'; language: string };
+  | { type: 'meet/getState' };
 
 // ---- side panel / app -> background ------------------------------------------
 export type UiMessage =
@@ -21,7 +19,6 @@ export type UiMessage =
   | { type: 'recording/stop'; tabId: number }
   | { type: 'recording/active' }
   | { type: 'tab/focus'; tabId: number }
-  | { type: 'captions/setLanguage'; tabId: number; language: string }
   /** Which local agent bridges the worker is connected to; also nudges a reconnect attempt. */
   | { type: 'agent/status' };
 
@@ -31,7 +28,6 @@ export type UiResponse = {
   'recording/stop': Session | null;
   'recording/active': ActiveRecording[];
   'tab/focus': void;
-  'captions/setLanguage': MeetState;
   'agent/status': AgentBridgeStatus;
 };
 

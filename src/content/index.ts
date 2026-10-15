@@ -1,4 +1,3 @@
-import { getCaptionLanguage, MEET_DEFAULT_CAPTION_LANGUAGE } from '../shared/captionLanguages';
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
 import { DEFAULT_SETTINGS, getSettings, onSettingsChange, updateSettings } from '../shared/settings';
 import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
@@ -12,8 +11,6 @@ import {
   isCaptionsShortcut,
   isCaptionsToggleTarget,
   isInCall,
-  readCaptionsLanguage,
-  selectCaptionsLanguage,
   setCaptionsButtonState,
   setCaptionsOverlayHidden,
   setKeepAlive,
@@ -23,8 +20,6 @@ import {
 
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
-/** Let Meet start rendering the captions band after captions were switched on. */
-const LANGUAGE_SETTLE_MS = 800;
 /**
  * Announced on `document` when a controller starts. Chrome leaves the previous
  * content script in place when the extension is reloaded or updated (with a dead
@@ -50,10 +45,6 @@ class MeetController {
   private captionsEnabledByUs = false;
   /** Set once captions were seen on during this capture; after that, "off" means the user turned them off. */
   private sawCaptionsOn = false;
-  /** Caption language last confirmed in Meet by this instance; shown when the band's chip is not rendered to read. */
-  private captionLanguage: string | null = null;
-  /** Language changes run one at a time: each drives Meet's settings dialog. */
-  private languageQueue: Promise<unknown> = Promise.resolve();
   private readonly guard = new CaptionsControlGuard(() => this.toggleOverlay());
   private settings: Settings | null = null;
   private readonly instanceId = Math.random().toString(36).slice(2);
@@ -114,9 +105,6 @@ class MeetController {
       case 'capture/stop':
         this.stopCapture();
         return this.snapshot();
-      case 'captions/setLanguage':
-        await this.setCaptionLanguage(message.language);
-        return this.snapshot();
     }
   }
 
@@ -128,7 +116,6 @@ class MeetController {
       inCall: isInCall(),
       capturing: this.captions.isRunning,
       captions: getCaptionsStatus(),
-      captionLanguage: readCaptionsLanguage()?.code ?? this.captionLanguage,
     };
   }
 
@@ -165,42 +152,6 @@ class MeetController {
     this.guard.attach();
     this.applyCaptureEffects();
     this.lastReported = null;
-    void this.applyDefaultLanguage();
-  }
-
-  /**
-   * A configured default caption language is applied at every recording start,
-   * unless the captions band already shows it.
-   */
-  private async applyDefaultLanguage(): Promise<void> {
-    const settings = this.settings ?? (await getSettings());
-    const code = settings.captionLanguage;
-    if (code === MEET_DEFAULT_CAPTION_LANGUAGE) return;
-    await new Promise((r) => window.setTimeout(r, LANGUAGE_SETTLE_MS));
-    if (!this.captions.isRunning || this.disposed) return;
-    try {
-      await this.setCaptionLanguage(code);
-    } catch (error) {
-      console.warn('[quilly] default caption language not applied:', error);
-      showToast(`Couldn’t switch captions to ${getCaptionLanguage(code)?.name ?? code}. Pick it in Meet’s captions bar.`);
-    }
-  }
-
-  /** Drives Meet's language picker to the requested language; serialized so popups never overlap. */
-  private setCaptionLanguage(code: string): Promise<void> {
-    const language = getCaptionLanguage(code);
-    if (!language) return Promise.reject(new Error(`Unknown caption language “${code}”.`));
-    if (!isInCall()) return Promise.reject(new Error('Join the call first; the caption language is set in Meet’s call settings.'));
-    const job = this.languageQueue.then(async () => {
-      const before = readCaptionsLanguage()?.code ?? this.captionLanguage;
-      const applied = await selectCaptionsLanguage(language);
-      this.captionLanguage = applied.code;
-      this.lastReported = null;
-      if (applied.code !== before) showToast(`Captions: ${applied.name}`);
-      if (applied.code !== language.code) throw new Error(`Meet kept “${applied.name}” instead of “${language.name}”.`);
-    });
-    this.languageQueue = job.catch(() => undefined);
-    return job;
   }
 
   private stopCapture(): void {

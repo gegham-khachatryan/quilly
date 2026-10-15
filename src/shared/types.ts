@@ -52,11 +52,6 @@ export interface Settings {
   keepAliveInBackground: boolean;
   /** Capture captions but keep Meet's caption overlay invisible. */
   hideCaptionsOverlay: boolean;
-  /**
-   * Caption language Quilly switches Meet to when a recording starts (BCP 47,
-   * see captionLanguages.ts). Empty leaves Meet's own choice untouched.
-   */
-  captionLanguage: string;
   openRouterApiKey: string;
   model: string;
   /** Let a local agent bridge (quilly-mcp) read sessions over localhost; see agentProtocol.ts. */
@@ -78,11 +73,6 @@ export interface MeetState {
   inCall: boolean;
   capturing: boolean;
   captions: CaptionsStatus;
-  /**
-   * Caption language Meet shows in its captions band (BCP 47), or the one
-   * Quilly last set when the band is not rendered; null when neither is known.
-   */
-  captionLanguage: string | null;
 }
 
 /** An entry observed in the Meet DOM; captions are re-sent as their text grows. */
