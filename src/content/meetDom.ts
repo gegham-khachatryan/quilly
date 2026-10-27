@@ -73,10 +73,14 @@ const OVERLAY_STYLE_ID = 'quilly-hide-captions';
 const CAPTIONS_TAG = 'data-quilly-captions';
 const WRAPPER_TAG = 'data-quilly-captions-wrap';
 const STAGE_TAG = 'data-quilly-stage';
+const TILE_TAG = 'data-quilly-tile';
+const MEDIA_FRAME_TAG = 'data-quilly-media-frame';
 const STAGE_BOTTOM_VAR = '--quilly-stage-bottom';
+const TILE_GAP_PX = 16;
+const STAGE_CONTROLS_GAP_PX = 64;
 const MAX_WRAPPER_DEPTH = 6;
-/** How far the band's top edge may sit from where the stage's inline inset ends. */
-const BAND_EDGE_TOLERANCE_PX = 24;
+/** Allow for Meet's animated/reflowing caption band when measuring its bounds. */
+const BAND_LAYOUT_TOLERANCE_PX = 48;
 
 /**
  * Hides Meet's caption region while keeping it alive for capture.
@@ -90,28 +94,52 @@ const BAND_EDGE_TOLERANCE_PX = 24;
  * The band (the observed element plus the wrappers that only hold it) is made
  * invisible in place, with its geometry intact so Meet's own measurements are
  * unaffected and `display:none` is avoided so Meet keeps updating the DOM.
- * The stage's bottom inset is overridden with the value `tagCaptionsContainer`
- * measures: Meet's inset minus the band's height, which is what Meet sets when
- * captions are off.
+ * The stage's bottom inset is overridden with the distance from its containing
+ * block to the top of the hidden caption band, preserving the controls area.
  */
 export function setCaptionsOverlayHidden(hidden: boolean): void {
   const existing = document.getElementById(OVERLAY_STYLE_ID);
   if (!hidden) {
     existing?.remove();
+    clearTileLayout();
+    for (const stage of Array.from(document.querySelectorAll(`[${STAGE_TAG}]`))) stage.removeAttribute(STAGE_TAG);
+    document.documentElement.style.removeProperty(STAGE_BOTTOM_VAR);
     return;
   }
-  if (existing) return;
-  const style = document.createElement('style');
-  style.id = OVERLAY_STYLE_ID;
-  style.textContent = `[${CAPTIONS_TAG}], [${WRAPPER_TAG}] {
+  if (!existing) {
+    const style = document.createElement('style');
+    style.id = OVERLAY_STYLE_ID;
+    style.textContent = `[${CAPTIONS_TAG}], [${WRAPPER_TAG}] {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
 }
 [${STAGE_TAG}] {
   bottom: var(${STAGE_BOTTOM_VAR}) !important;
+}
+[${TILE_TAG}] {
+  position: absolute !important;
+  left: var(--quilly-tile-left) !important;
+  top: var(--quilly-tile-top) !important;
+  width: var(--quilly-tile-width) !important;
+  height: var(--quilly-tile-height) !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+[${MEDIA_FRAME_TAG}] {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+[${TILE_TAG}] video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
 }`;
-  document.documentElement.appendChild(style);
+    document.documentElement.appendChild(style);
+  }
 }
 
 /**
@@ -146,8 +174,8 @@ export function tagCaptionsContainer(container: HTMLElement | null): void {
 /**
  * Records the bottom inset the stage would have without the caption band and
  * tags the stage so the hide rule can apply it. `band` runs from the observed
- * element outwards. Nothing is tagged unless the band really sits where the
- * stage's inline inset ends, so any other arrangement leaves Meet's geometry alone.
+ * element outwards. Nothing is tagged unless the band occupies the space below
+ * the stage, so unrelated Meet layouts are left alone.
  */
 function tagStage(band: HTMLElement[]): void {
   const stage = getStage();
@@ -161,6 +189,7 @@ function tagStage(band: HTMLElement[]): void {
   }
   document.documentElement.style.setProperty(STAGE_BOTTOM_VAR, `${bottom}px`);
   stage.setAttribute(STAGE_TAG, '1');
+  if (document.getElementById(OVERLAY_STYLE_ID)) arrangeParticipantTiles(stage);
 }
 
 /** The call stage: Meet's `<main>` landmark, absolutely positioned with an inline inset. */
@@ -170,20 +199,127 @@ function getStage(): HTMLElement | null {
 }
 
 function reclaimedStageBottom(stage: HTMLElement, band: HTMLElement[]): number | null {
-  const inlineBottom = parsePx(stage.style.bottom);
+  let inlineBottom = parsePx(stage.style.bottom);
+  if (inlineBottom === null) {
+    // Meet sometimes writes a percentage or calc() inset. Temporarily remove
+    // Quilly's override so computedStyle resolves Meet's original value.
+    const wasTagged = stage.hasAttribute(STAGE_TAG);
+    if (wasTagged) stage.removeAttribute(STAGE_TAG);
+    inlineBottom = parsePx(getComputedStyle(stage).bottom);
+    if (wasTagged) stage.setAttribute(STAGE_TAG, '1');
+  }
   if (inlineBottom === null) return null;
   const containingBlock = stage.offsetParent;
   const containingBottom =
     containingBlock && containingBlock !== document.body ? containingBlock.getBoundingClientRect().bottom : window.innerHeight;
   const stageEdge = containingBottom - inlineBottom;
-  // The outermost band element that fits in the reserved space and starts where the stage ends.
+
+  // The bottom call toolbar stays in the same place whether captions are on
+  // or off. Use it as the layout boundary so the video stage expands to the
+  // normal Meet layout even when Meet's caption wrappers don't expose useful
+  // geometry or change their structure.
+  const controls = findCallControlsTop(stageEdge, containingBottom);
+  if (controls !== null) return Math.round(containingBottom - controls + STAGE_CONTROLS_GAP_PX);
+
+  // Meet can leave a gap between the stage and captions, and caption wrappers
+  // can animate during reflow. Requiring their top edge to match the stage edge
+  // exactly leaves the original bottom inset in place on those layouts, which
+  // makes the hidden caption area look like empty space. Use the largest
+  // tagged wrapper contained in that reserved area and move the stage edge to
+  // its top, preserving the controls area below it.
   for (const el of [...band].reverse()) {
     const rect = el.getBoundingClientRect();
-    if (rect.height <= 0 || rect.height > inlineBottom) continue;
-    if (Math.abs(rect.top - stageEdge) > BAND_EDGE_TOLERANCE_PX) continue;
-    return Math.round(inlineBottom - rect.height);
+    if (rect.height <= 0 || rect.height > inlineBottom + BAND_LAYOUT_TOLERANCE_PX) continue;
+    if (rect.bottom <= stageEdge || rect.top >= containingBottom) continue;
+    if (rect.top < stageEdge - BAND_LAYOUT_TOLERANCE_PX) continue;
+    if (rect.bottom > containingBottom + BAND_LAYOUT_TOLERANCE_PX) continue;
+    return Math.round(Math.max(0, containingBottom - rect.top));
   }
   return null;
+}
+
+function findCallControlsTop(stageEdge: number, containingBottom: number): number | null {
+  const leaveButton = document.querySelector<HTMLElement>(
+    'button[aria-label*="Leave call" i], button[aria-label*="End call" i]',
+  );
+  if (!leaveButton || leaveButton.offsetParent === null) return null;
+
+  let el: HTMLElement | null = leaveButton;
+  let controls: DOMRect | null = null;
+  for (let depth = 0; el && el !== document.body && depth < 8; depth++, el = el.parentElement) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width >= window.innerWidth * 0.25 && rect.height >= 40 && rect.height <= 180) {
+      controls = rect;
+      break;
+    }
+  }
+
+  const buttonRect = leaveButton.getBoundingClientRect();
+  const controlsTop = controls?.top ?? buttonRect.top - 20;
+  if (controlsTop < stageEdge - BAND_LAYOUT_TOLERANCE_PX || controlsTop >= containingBottom) return null;
+  return controlsTop;
+}
+
+/**
+ * Meet leaves participant tile dimensions at their captions-on values when
+ * only its stage inset is overridden with CSS. While the caption overlay is
+ * hidden, lay those absolute tile nodes out in the newly available stage area.
+ */
+function arrangeParticipantTiles(stage: HTMLElement): void {
+  const tiles = Array.from(stage.children).filter((el): el is HTMLElement => {
+    if (!(el instanceof HTMLElement)) return false;
+    const inline = el.style;
+    return (
+      el.hasAttribute(TILE_TAG) ||
+      (parsePx(inline.left) !== null && parsePx(inline.top) !== null && parsePx(inline.width) !== null && parsePx(inline.height) !== null)
+    );
+  });
+
+  for (const old of Array.from(stage.querySelectorAll<HTMLElement>(`[${TILE_TAG}]`))) {
+    if (!tiles.includes(old)) {
+      old.removeAttribute(TILE_TAG);
+      old.style.removeProperty('--quilly-tile-left');
+      old.style.removeProperty('--quilly-tile-top');
+      old.style.removeProperty('--quilly-tile-width');
+      old.style.removeProperty('--quilly-tile-height');
+      old.querySelector(`[${MEDIA_FRAME_TAG}]`)?.removeAttribute(MEDIA_FRAME_TAG);
+    }
+  }
+
+  const count = tiles.length;
+  const width = stage.clientWidth;
+  const height = stage.clientHeight;
+  if (!count || !width || !height) return;
+
+  const columns = Math.min(count, 4, Math.ceil(Math.sqrt(count * 1.8)));
+  const rows = Math.ceil(count / columns);
+  const tileWidth = (width - TILE_GAP_PX * (columns + 1)) / columns;
+  const tileHeight = (height - TILE_GAP_PX * (rows + 1)) / rows;
+
+  tiles.forEach((tile, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    tile.setAttribute(TILE_TAG, '1');
+    tile.style.setProperty('--quilly-tile-left', `${Math.round(TILE_GAP_PX + column * (tileWidth + TILE_GAP_PX))}px`);
+    tile.style.setProperty('--quilly-tile-top', `${Math.round(TILE_GAP_PX + row * (tileHeight + TILE_GAP_PX))}px`);
+    tile.style.setProperty('--quilly-tile-width', `${Math.round(tileWidth)}px`);
+    tile.style.setProperty('--quilly-tile-height', `${Math.round(tileHeight)}px`);
+
+    const video = tile.querySelector('video');
+    const frame = video?.parentElement;
+    if (frame && frame !== tile) frame.setAttribute(MEDIA_FRAME_TAG, '1');
+  });
+}
+
+function clearTileLayout(): void {
+  for (const tile of Array.from(document.querySelectorAll<HTMLElement>(`[${TILE_TAG}]`))) {
+    tile.removeAttribute(TILE_TAG);
+    tile.style.removeProperty('--quilly-tile-left');
+    tile.style.removeProperty('--quilly-tile-top');
+    tile.style.removeProperty('--quilly-tile-width');
+    tile.style.removeProperty('--quilly-tile-height');
+  }
+  for (const frame of Array.from(document.querySelectorAll(`[${MEDIA_FRAME_TAG}]`))) frame.removeAttribute(MEDIA_FRAME_TAG);
 }
 
 function parsePx(value: string): number | null {
