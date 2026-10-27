@@ -5,6 +5,11 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] – 2026-10-27
+
+### Fixed
+- Hiding the caption overlay no longer leaves the stage and participant tiles at their captions-on size, which showed as empty space above the call controls. The stage edge is now anchored to the bottom call toolbar, with the hidden band's own bounds as a fallback, and the participant tiles are laid out again in a grid over the reclaimed area. Everything returns to Meet's own layout when the overlay is shown.
+
 ## [0.4.0] – 2026-10-15
 
 ### Removed
