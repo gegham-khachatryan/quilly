@@ -5,6 +5,12 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.2] – 2026-10-30
+
+### Fixed
+- Recording works again on accounts where Meet replaced the captions toggle with the "Captions and translation" button. That button only opens a popover, so Quilly's click left captions off and no transcript was recorded. Quilly now recognises both controls: it operates the popover's "Turn on captions" item (and closes the popover again), reads the captions state from the button's pressed state, and while recording routes the popover's captions item to show/hide instead of letting it cut the transcript source. Speech translation and the settings entries in that popover are left untouched.
+- Quilly's own re-enabling of captions while recording was blocked by its own guard against the user turning captions off; the guard now only intercepts real user input.
+
 ## [0.4.1] – 2026-10-27
 
 ### Fixed
