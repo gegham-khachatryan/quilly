@@ -33,40 +33,166 @@ export function isInCall(): boolean {
   );
 }
 
-/**
- * The toolbar CC toggle. Several buttons mention captions (the toggle, caption
- * settings, language picker); the toggle is the one whose label says "Turn on/off"
- * or that exposes aria-pressed. Menu items and settings entries are skipped.
- */
-function findCaptionsButton(): HTMLButtonElement | null {
-  const candidates = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label]'))
-    .filter((b) => !b.disabled && b.offsetParent !== null)
-    .map((b) => ({ b, label: b.getAttribute('aria-label') ?? '' }))
-    .filter(({ label }) => /\bcaptions?\b|\bsubtitles?\b/i.test(label) && !/settings|language|translate/i.test(label));
-  const score = ({ b, label }: { b: HTMLButtonElement; label: string }) =>
-    (/\bturn (on|off)\b/i.test(label) ? 2 : 0) + (b.hasAttribute('aria-pressed') ? 1 : 0);
-  return candidates.sort((x, y) => score(y) - score(x))[0]?.b ?? null;
+// ---- captions control ------------------------------------------------------------
+//
+// Meet ships two shapes of the toolbar captions control:
+//
+// - A plain toggle ("Turn on captions" / "Turn off captions"): one click flips
+//   captions.
+// - A popover launcher ("Captions and translation", shown to accounts with
+//   speech translation): `aria-haspopup="dialog"`, `aria-expanded` mirrors the
+//   popover, `aria-pressed` mirrors captions. A click only opens a dialog of
+//   the same name holding "Turn on captions" / "Turn off live captions",
+//   "Turn on/off speech translation" and the settings entry points.
+//
+// Everything that flips captions goes through `CaptionsControl` so the rest of
+// the content script does not care which one the page has.
+
+type CaptionsControlKind = 'toggle' | 'popover';
+
+interface CaptionsControl {
+  kind: CaptionsControlKind;
+  /** The toolbar button: the toggle itself, or the popover launcher. */
+  button: HTMLButtonElement;
+  label: string;
 }
 
-export function getCaptionsStatus(): CaptionsStatus {
-  const button = findCaptionsButton();
-  if (!button) return getCaptionsContainer() ? 'on' : 'unavailable';
-  const label = button.getAttribute('aria-label') ?? '';
-  if (button.getAttribute('aria-pressed') === 'true' || /turn off|disable|hide/i.test(label)) return 'on';
-  if (button.getAttribute('aria-pressed') === 'false' || /turn on|enable|show/i.test(label)) return 'off';
+const CAPTIONS_LABEL_RE = /\bcaptions?\b|\bsubtitles?\b/i;
+/** Entry points that live next to the control but do not flip captions. */
+const CAPTIONS_NON_TOGGLE_RE = /settings|language|translate\b/i;
+const TURN_ON_OFF_RE = /\bturn (on|off)\b/i;
+/** The popover item that flips captions; translation has its own item. */
+const CAPTIONS_ITEM_RE = /^turn (on|off)\b.*\bcaptions?\b/i;
+const POPOVER_OPEN_TIMEOUT_MS = 1500;
+
+/**
+ * The toolbar captions control. Several buttons mention captions (the control,
+ * caption settings, the language picker); the control is the one whose label
+ * says "Turn on/off" or that exposes aria-pressed. Buttons inside menus and
+ * dialogs (the popover's own items, settings entries) are skipped.
+ */
+function findCaptionsControl(): CaptionsControl | null {
+  const candidates = Array.from(document.querySelectorAll<HTMLButtonElement>('button[aria-label]'))
+    .filter((b) => !b.disabled && b.offsetParent !== null && !b.closest('[role="dialog"], [role="menu"], [role="listbox"]'))
+    .map((b) => ({ b, label: b.getAttribute('aria-label') ?? '' }))
+    .filter(({ label }) => CAPTIONS_LABEL_RE.test(label) && !CAPTIONS_NON_TOGGLE_RE.test(label));
+  const score = ({ b, label }: { b: HTMLButtonElement; label: string }) =>
+    (TURN_ON_OFF_RE.test(label) ? 2 : 0) + (b.hasAttribute('aria-pressed') ? 1 : 0);
+  const best = candidates.sort((x, y) => score(y) - score(x))[0];
+  if (!best) return null;
+  const haspopup = best.b.getAttribute('aria-haspopup');
+  const kind: CaptionsControlKind = haspopup && haspopup !== 'false' ? 'popover' : 'toggle';
+  return { kind, button: best.b, label: best.label };
+}
+
+/** The popover launched by the control, if it is open. Meet labels it like the launcher. */
+function findCaptionsPopover(control: CaptionsControl): HTMLElement | null {
+  return (
+    Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find(
+      (d) => d.offsetParent !== null && (d.getAttribute('aria-label') ?? '') === control.label,
+    ) ?? null
+  );
+}
+
+/** The item inside the open popover that flips captions (not translation, not settings). */
+function findCaptionsPopoverItem(control: CaptionsControl): HTMLButtonElement | null {
+  const popover = findCaptionsPopover(control);
+  if (!popover) return null;
+  return (
+    Array.from(popover.querySelectorAll<HTMLButtonElement>('button[aria-label]')).find((b) => {
+      const label = b.getAttribute('aria-label') ?? '';
+      return CAPTIONS_ITEM_RE.test(label) && !/translat/i.test(label);
+    }) ?? null
+  );
+}
+
+/** The element whose activation flips captions: the toggle, or the popover's captions item. */
+function findCaptionsFlipTarget(): HTMLElement | null {
+  const control = findCaptionsControl();
+  if (!control) return null;
+  return control.kind === 'toggle' ? control.button : findCaptionsPopoverItem(control);
+}
+
+function captionsStatusOf(control: CaptionsControl): CaptionsStatus {
+  const pressed = control.button.getAttribute('aria-pressed');
+  if (pressed === 'true') return 'on';
+  if (pressed === 'false') return 'off';
+  if (/turn off|disable|hide/i.test(control.label)) return 'on';
+  if (/turn on|enable|show/i.test(control.label)) return 'off';
   return getCaptionsContainer() ? 'on' : 'off';
 }
 
-/** Clicks the native CC button if captions are off. Returns the status before the click. */
+export function getCaptionsStatus(): CaptionsStatus {
+  const control = findCaptionsControl();
+  if (!control) return getCaptionsContainer() ? 'on' : 'unavailable';
+  return captionsStatusOf(control);
+}
+
+/** The flip in flight, so a poll that fires mid-way does not drive the popover twice. */
+let captionsFlip: Promise<void> | null = null;
+
+/**
+ * Drives Meet's own control to the requested captions state. Resolves once the
+ * control has been operated (not once Meet has re-rendered); callers read the
+ * state back on their next poll. A flip already in flight is reused.
+ */
+function setCaptionsEnabled(on: boolean): Promise<void> {
+  if (captionsFlip) return captionsFlip;
+  captionsFlip = flipCaptions(on).finally(() => {
+    captionsFlip = null;
+  });
+  return captionsFlip;
+}
+
+async function flipCaptions(on: boolean): Promise<void> {
+  const control = findCaptionsControl();
+  if (!control || captionsStatusOf(control) === (on ? 'on' : 'off')) return;
+  if (control.kind === 'toggle') {
+    control.button.click();
+    return;
+  }
+  const opened = control.button.getAttribute('aria-expanded') !== 'true';
+  if (opened) control.button.click();
+  const item = await waitFor(() => findCaptionsPopoverItem(control), POPOVER_OPEN_TIMEOUT_MS);
+  item?.click();
+  // The popover stays open after the item is used; put it back the way it was.
+  if (opened && control.button.isConnected && control.button.getAttribute('aria-expanded') === 'true') control.button.click();
+}
+
+/**
+ * Turns captions on through Meet's control if they are off. Returns the status
+ * found before doing so; the flip itself may complete after this returns.
+ */
 export function ensureCaptionsOn(): CaptionsStatus {
   const status = getCaptionsStatus();
-  if (status === 'off') findCaptionsButton()?.click();
+  if (status === 'off') void setCaptionsEnabled(true);
   return status;
 }
 
 /** Turns captions off again (used to restore the state Quilly found at start). */
 export function turnCaptionsOff(): void {
-  if (getCaptionsStatus() === 'on') findCaptionsButton()?.click();
+  if (getCaptionsStatus() === 'on') void setCaptionsEnabled(false);
+}
+
+/** Resolves with the first non-null result of `find`, re-checking on DOM changes, or null on timeout. */
+function waitFor<T>(find: () => T | null, timeoutMs: number): Promise<T | null> {
+  const first = find();
+  if (first) return Promise.resolve(first);
+  return new Promise((resolve) => {
+    let timer = 0;
+    const observer = new MutationObserver(() => {
+      const found = find();
+      if (!found) return;
+      window.clearTimeout(timer);
+      observer.disconnect();
+      resolve(found);
+    });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-label', 'aria-expanded'] });
+    timer = window.setTimeout(() => {
+      observer.disconnect();
+      resolve(find());
+    }, timeoutMs);
+  });
 }
 
 const OVERLAY_STYLE_ID = 'quilly-hide-captions';
@@ -559,11 +685,16 @@ function normalizeText(value: string | null | undefined): string {
 
 // ---- captions control intercept ------------------------------------------------
 
-/** True when the event originated on Meet's captions toggle button. */
+/**
+ * True when the event originated on the element that flips captions: the
+ * toolbar toggle, or the captions item inside the "Captions and translation"
+ * popover. The popover launcher itself is left alone so the user can still
+ * reach translation and the settings entries.
+ */
 export function isCaptionsToggleTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
-  const button = target.closest('button');
-  return button !== null && button === findCaptionsButton();
+  const button = target.closest<HTMLElement>('button, [role="button"]');
+  return button !== null && button === findCaptionsFlipTarget();
 }
 
 /** Meet toggles captions with the bare "c" key when focus is not in a text field. */
@@ -618,7 +749,8 @@ export type CaptionsButtonState = 'shown' | 'hidden';
  * hidden, and the tooltip explains. Safe to call often (Meet re-renders it).
  */
 export function setCaptionsButtonState(state: CaptionsButtonState | null): void {
-  const button = findCaptionsButton();
+  const control = findCaptionsControl();
+  const button = control?.button ?? null;
   if (!state) {
     for (const el of Array.from(document.querySelectorAll(`[${CC_STATE_ATTR}]`))) {
       el.removeAttribute(CC_STATE_ATTR);
@@ -632,17 +764,17 @@ export function setCaptionsButtonState(state: CaptionsButtonState | null): void 
     document.getElementById(CC_STYLE_ID)?.remove();
     return;
   }
-  if (!button) return;
+  if (!control || !button) return;
   if (!document.getElementById(CC_STYLE_ID)) {
     const style = document.createElement('style');
     style.id = CC_STYLE_ID;
     style.textContent = `
-button[${CC_STATE_ATTR}] { position: relative !important; }
-button[${CC_STATE_ATTR}]::after {
+button[${CC_STATE_ATTR}], [role="button"][${CC_STATE_ATTR}] { position: relative !important; }
+button[${CC_STATE_ATTR}]::after, [role="button"][${CC_STATE_ATTR}]::after {
   content: ''; position: absolute; right: 4px; top: 4px; width: 9px; height: 9px; border-radius: 50%;
   background: linear-gradient(135deg, #4249d2, #d428b9); box-shadow: 0 0 0 2px rgba(0, 0, 0, .55); pointer-events: none;
 }
-button[${CC_STATE_ATTR}="hidden"] { opacity: .55 !important; }`;
+button[${CC_STATE_ATTR}="hidden"], [role="button"][${CC_STATE_ATTR}="hidden"] { opacity: .55 !important; }`;
     document.documentElement.appendChild(style);
   }
   if (button.getAttribute(CC_STATE_ATTR) !== state) {
@@ -650,9 +782,12 @@ button[${CC_STATE_ATTR}="hidden"] { opacity: .55 !important; }`;
       button.setAttribute('data-quilly-original-title', button.getAttribute('title') ?? '');
     }
     button.setAttribute(CC_STATE_ATTR, state);
-    button.setAttribute(
-      'title',
-      state === 'hidden' ? 'Captions hidden · Quilly is recording them. Click to show.' : 'Captions shown · Quilly is recording them. Click to hide.',
-    );
+    button.setAttribute('title', captionsButtonTitle(control.kind, state));
   }
+}
+
+function captionsButtonTitle(kind: CaptionsControlKind, state: CaptionsButtonState): string {
+  const lead = state === 'hidden' ? 'Captions hidden · Quilly is recording them.' : 'Captions shown · Quilly is recording them.';
+  const action = state === 'hidden' ? 'show' : 'hide';
+  return kind === 'toggle' ? `${lead} Click to ${action}.` : `${lead} Use "Live captions" in this menu to ${action}.`;
 }

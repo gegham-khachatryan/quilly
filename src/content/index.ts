@@ -210,8 +210,10 @@ class MeetController {
 
 /**
  * While recording, intercepts the ways a user turns captions off in Meet (the
- * toolbar button and the "c" shortcut) and routes them to the overlay toggle
- * instead, so the transcript source is never cut.
+ * toolbar toggle or the captions item of the "Captions and translation"
+ * popover, and the "c" shortcut) and routes them to the overlay toggle instead,
+ * so the transcript source is never cut. Only user input is intercepted:
+ * Quilly's own programmatic clicks (re-enabling captions) must reach Meet.
  */
 class CaptionsControlGuard {
   private attached = false;
@@ -233,14 +235,14 @@ class CaptionsControlGuard {
   }
 
   private readonly onPointer = (event: Event): void => {
-    if (!isCaptionsToggleTarget(event.target)) return;
+    if (!event.isTrusted || !isCaptionsToggleTarget(event.target)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (event.type === 'click') this.onToggle();
   };
 
   private readonly onKey = (event: KeyboardEvent): void => {
-    if (!isCaptionsShortcut(event)) return;
+    if (!event.isTrusted || !isCaptionsShortcut(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     this.onToggle();
