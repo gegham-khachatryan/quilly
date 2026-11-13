@@ -1,7 +1,9 @@
+import { captionLanguageForLocales } from '../shared/captionLanguages';
 import { errorEnvelope, sendFromContent, type BackgroundToContentMessage } from '../shared/messages';
 import { DEFAULT_SETTINGS, getSettings, onSettingsChange, updateSettings } from '../shared/settings';
 import type { CaptionUpsert, MeetState, Settings } from '../shared/types';
 import { CaptionObserver } from './captionObserver';
+import { ChannelCaptions } from './channelCaptions';
 import { MeetEventObserver } from './eventObserver';
 import {
   ensureCaptionsOn,
@@ -21,6 +23,11 @@ import {
 const STATE_POLL_MS = 1500;
 const CAPTIONS_ENFORCE_MS = 4000;
 /**
+ * How long the data-channel source may go without a stream, at the start of a
+ * capture or after losing it mid-call, before Meet's own captions take over.
+ */
+const CHANNEL_GRACE_MS = 8000;
+/**
  * Announced on `document` when a controller starts. Chrome leaves the previous
  * content script in place when the extension is reloaded or updated (with a dead
  * chrome.runtime), and the background may inject a fresh copy into an open tab;
@@ -36,7 +43,26 @@ function runtimeAlive(): boolean {
   }
 }
 
+/**
+ * Where a capture's captions come from.
+ *
+ * - `channel`: Meet's captions data channel, requested by the main-world script
+ *   (public/captions-channel.js). Nothing in Meet's UI is touched, so the
+ *   captions button, the caption band and the call layout stay the user's.
+ * - `meetUi`: the fallback when that is not possible (the page was loaded before
+ *   Quilly's hooks could be installed, or the channel never opens): Meet's own
+ *   captions are switched on and read from the caption band, which brings the
+ *   captions-control guard, the overlay hiding and the visibility shim with it.
+ */
+type CaptionSource = 'channel' | 'meetUi';
+
 class MeetController {
+  private source: CaptionSource | null = null;
+  private readonly channel = new ChannelCaptions(
+    (entry) => this.send(entry),
+    () => this.onChannelStatus(),
+  );
+  private channelDeadline: number | null = null;
   private readonly captions = new CaptionObserver((entry) => this.send(entry));
   private readonly events = new MeetEventObserver((entry) => this.send(entry));
   private lastReported: string | null = null;
@@ -114,8 +140,8 @@ class MeetController {
       meetingCode: getMeetingCode(),
       title: getMeetingTitle(),
       inCall: isInCall(),
-      capturing: this.captions.isRunning,
-      captions: getCaptionsStatus(),
+      capturing: this.source !== null,
+      captions: this.source === 'channel' ? (this.channel.streaming ? 'on' : 'off') : getCaptionsStatus(),
     };
   }
 
@@ -126,7 +152,7 @@ class MeetController {
       this.dispose();
       return;
     }
-    if (this.captions.isRunning) this.applyCaptureEffects();
+    if (this.source === 'meetUi') this.applyCaptureEffects();
     const state = this.snapshot();
     const key = JSON.stringify(state);
     if (key === this.lastReported) return;
@@ -135,7 +161,7 @@ class MeetController {
       // Background was unreachable (e.g. extension reloaded); retry on next poll.
       this.lastReported = null;
     });
-    if (!state.inCall && this.captions.isRunning) this.stopCapture();
+    if (!state.inCall && this.source !== null) this.stopCapture();
   }
 
   private send(entry: CaptionUpsert): void {
@@ -143,22 +169,71 @@ class MeetController {
   }
 
   private startCapture(): void {
-    if (this.captions.isRunning) return;
-    this.captions.start();
+    if (this.source !== null) return;
     this.events.start();
+    if (this.requestChannelCaptions()) {
+      this.source = 'channel';
+      this.watchChannel();
+    } else this.startMeetUiCapture();
+    this.applyCaptureEffects();
+    this.lastReported = null;
+  }
+
+  /** (Re)states what the data-channel source should deliver. False when the page script is not there. */
+  private requestChannelCaptions(): boolean {
+    const settings = this.settings ?? DEFAULT_SETTINGS;
+    return this.channel.start(settings.captionLanguage, captionLanguageForLocales(navigator.languages));
+  }
+
+  private onChannelStatus(): void {
+    if (this.source !== 'channel') return;
+    this.watchChannel();
+    this.lastReported = null;
+    this.reportState();
+  }
+
+  /** Arms the fallback while the channel is not streaming and disarms it once it is. */
+  private watchChannel(): void {
+    if (this.channel.streaming) {
+      if (this.channelDeadline !== null) window.clearTimeout(this.channelDeadline);
+      this.channelDeadline = null;
+      return;
+    }
+    if (this.channelDeadline !== null) return;
+    this.channelDeadline = window.setTimeout(() => {
+      this.channelDeadline = null;
+      if (this.source !== 'channel' || this.channel.streaming) return;
+      console.info('[quilly] no caption stream on the data channel; reading Meet’s own captions instead');
+      this.channel.stop();
+      this.startMeetUiCapture();
+      this.applyCaptureEffects();
+      this.lastReported = null;
+    }, CHANNEL_GRACE_MS);
+  }
+
+  private startMeetUiCapture(): void {
+    this.source = 'meetUi';
+    this.captions.start();
     this.captionsEnabledByUs = ensureCaptionsOn() === 'off';
     this.sawCaptionsOn = false;
     this.captionsEnforcer = window.setInterval(() => this.enforceCaptions(), CAPTIONS_ENFORCE_MS);
     this.guard.attach();
-    this.applyCaptureEffects();
-    this.lastReported = null;
   }
 
   private stopCapture(): void {
     this.teardownCapture({ restoreCaptions: true });
   }
 
+  /**
+   * `restoreCaptions: false` leaves the caption source itself as it is (Meet's
+   * captions on, the page's channel open) for the instance taking over.
+   */
   private teardownCapture({ restoreCaptions }: { restoreCaptions: boolean }): void {
+    this.source = null;
+    if (this.channelDeadline !== null) window.clearTimeout(this.channelDeadline);
+    this.channelDeadline = null;
+    if (restoreCaptions) this.channel.stop();
+    else this.channel.detach();
     this.captions.stop();
     this.events.stop();
     if (this.captionsEnforcer !== null) window.clearInterval(this.captionsEnforcer);
@@ -195,12 +270,16 @@ class MeetController {
   private applySettings(settings: Settings): void {
     if (this.disposed) return; // a newer instance owns the page's DOM effects now
     this.settings = settings;
+    if (this.source === 'channel') this.requestChannelCaptions(); // the caption language may have changed
     this.applyCaptureEffects();
   }
 
-  /** Visibility shim and overlay hiding are only active while capturing. */
+  /**
+   * Visibility shim, overlay hiding and the captions button state exist for
+   * captures that read Meet's caption band; a channel capture needs none of them.
+   */
   private applyCaptureEffects(): void {
-    const capturing = this.captions.isRunning;
+    const capturing = this.source === 'meetUi';
     const settings = this.settings ?? DEFAULT_SETTINGS;
     setKeepAlive(capturing && settings.keepAliveInBackground);
     setCaptionsOverlayHidden(capturing && settings.hideCaptionsOverlay);

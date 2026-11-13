@@ -11,7 +11,7 @@ import type { MeetState } from '../shared/types';
  */
 
 const MEET_MATCH = 'https://meet.google.com/*';
-const MAIN_WORLD_FILES = ['keepalive.js'];
+const MAIN_WORLD_FILES = ['keepalive.js', 'captions-channel.js'];
 const ISOLATED_FILES = ['content.js'];
 /** Do not retry an injection into the same tab more often than this. */
 const REPAIR_COOLDOWN_MS = 10_000;
@@ -50,7 +50,7 @@ async function repair(tabId: number): Promise<boolean> {
 
 async function inject(tabId: number): Promise<boolean> {
   try {
-    // keepalive.js guards against running twice; content.js takes over from any older instance.
+    // The main-world files guard against running twice; content.js takes over from any older instance.
     await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: MAIN_WORLD_FILES });
     await chrome.scripting.executeScript({ target: { tabId }, files: ISOLATED_FILES });
     return true;

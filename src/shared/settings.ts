@@ -7,6 +7,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoStart: true,
   keepAliveInBackground: true,
   hideCaptionsOverlay: false,
+  captionLanguage: '',
   openRouterApiKey: '',
   model: 'anthropic/claude-sonnet-4.5',
   agentBridgeEnabled: false,

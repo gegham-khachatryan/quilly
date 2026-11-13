@@ -47,7 +47,8 @@
         "https://meet.google.com/*"
       ],
       "js": [
-        "keepalive.js"
+        "keepalive.js",
+        "captions-channel.js"
       ],
       "run_at": "document_start",
       "world": "MAIN"

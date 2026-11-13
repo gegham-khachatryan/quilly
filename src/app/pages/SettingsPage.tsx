@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { sessionsRepo } from '../../shared/db';
+import { CaptionLanguageSelect } from '../../ui/CaptionLanguageSelect';
 import { Toggle } from '../../ui/components';
 import { useSettings } from '../../ui/hooks';
 import { AgentBridgeSettings } from '../components/AgentBridgeSettings';
@@ -26,22 +27,42 @@ export function SettingsPage() {
         <h2 className="text-sm font-semibold">Recording</h2>
         <Toggle
           label="Auto-start in calls"
-          hint="When you join a Meet call, turn on captions and start recording automatically."
+          hint="When you join a Meet call, start recording automatically."
           checked={settings.autoStart}
           onChange={(v) => void update({ autoStart: v })}
         />
-        <Toggle
-          label="Keep capturing in background tabs"
-          hint="Meet pauses captions when its tab is hidden. While recording, make Meet believe the tab is visible so captions keep flowing."
-          checked={settings.keepAliveInBackground}
-          onChange={(v) => void update({ keepAliveInBackground: v })}
-        />
-        <Toggle
-          label="Hide caption overlay while recording"
-          hint="Captions stay on (they are the transcript source) but are invisible and take no space in the Meet window. While recording, Meet’s captions button and the C key toggle this instead of switching captions off."
-          checked={settings.hideCaptionsOverlay}
-          onChange={(v) => void update({ hideCaptionsOverlay: v })}
-        />
+        <div className="space-y-1">
+          <span className="block text-sm">Caption language</span>
+          <span className="block text-xs text-muted">
+            The language Meet transcribes the call in. Automatic uses the language chosen in Meet’s own captions during the call, otherwise your
+            browser’s language.
+          </span>
+          <div className="pt-1">
+            <CaptionLanguageSelect
+              value={settings.captionLanguage}
+              defaultLabel="Automatic"
+              onChange={(captionLanguage) => void update({ captionLanguage })}
+            />
+          </div>
+        </div>
+        <div className="space-y-4 border-t border-line pt-4">
+          <p className="text-xs text-muted">
+            Quilly receives captions directly from the call, without switching on Meet’s captions. In a Meet tab that was already open when Quilly
+            was installed or updated it reads Meet’s on-screen captions instead until the tab is reloaded; the two options below apply only then.
+          </p>
+          <Toggle
+            label="Keep capturing in background tabs"
+            hint="Meet pauses on-screen captions when its tab is hidden. While recording, make Meet believe the tab is visible so captions keep flowing."
+            checked={settings.keepAliveInBackground}
+            onChange={(v) => void update({ keepAliveInBackground: v })}
+          />
+          <Toggle
+            label="Hide caption overlay while recording"
+            hint="Captions stay on (they are the transcript source) but are invisible. While recording, Meet’s captions button and the C key toggle this instead of switching captions off."
+            checked={settings.hideCaptionsOverlay}
+            onChange={(v) => void update({ hideCaptionsOverlay: v })}
+          />
+        </div>
       </section>
 
       <section className="card space-y-4 p-4">

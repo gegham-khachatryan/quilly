@@ -33,6 +33,44 @@ export function isInCall(): boolean {
   );
 }
 
+// ---- participants -----------------------------------------------------------------
+
+/**
+ * Display name of a participant from the id Meet's caption frames carry
+ * (`spaces/<space>/devices/<n>`). Meet tags participant tiles and the rows of
+ * the People panel with `data-participant-id`; a row is labelled with the name,
+ * a tile shows it in a `notranslate` element (how Meet keeps page translation
+ * off user-entered names). Icons and decorations carry that class too, but
+ * hidden from assistive technology, which is what tells the name apart. Null
+ * while Meet has no element for that participant in the DOM, e.g. someone
+ * off-screen in a large call.
+ */
+export function getParticipantName(participantId: string): string | null {
+  const device = /\/devices\/[^/]+$/.exec(participantId)?.[0];
+  const selectors = [`[data-participant-id="${CSS.escape(participantId)}"]`];
+  if (device) selectors.push(`[data-participant-id$="${CSS.escape(device)}"]`);
+  for (const selector of selectors) {
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+      const name = participantNameIn(el);
+      if (name) return name;
+    }
+  }
+  return null;
+}
+
+function participantNameIn(el: HTMLElement): string | null {
+  const candidates = [
+    el.getAttribute('role') === 'listitem' ? el.getAttribute('aria-label') : null,
+    ...Array.from(el.querySelectorAll('.notranslate:not([aria-hidden])'), (name) => name.textContent),
+    el.querySelector('[role="listitem"][aria-label]')?.getAttribute('aria-label'),
+  ];
+  for (const candidate of candidates) {
+    const name = candidate?.replace(/\s+/g, ' ').trim();
+    if (name) return name;
+  }
+  return null;
+}
+
 // ---- captions control ------------------------------------------------------------
 //
 // Meet ships two shapes of the toolbar captions control:

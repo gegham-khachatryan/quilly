@@ -50,8 +50,13 @@ export interface Settings {
   autoStart: boolean;
   /** Keep Meet rendering captions while the tab is in the background (visibility shim). */
   keepAliveInBackground: boolean;
-  /** Capture captions but keep Meet's caption overlay invisible. */
+  /**
+   * Capture captions but keep Meet's caption overlay invisible. Only matters when
+   * captions have to be read from Meet's caption band; the data-channel path never shows one.
+   */
   hideCaptionsOverlay: boolean;
+  /** BCP 47 tag Quilly asks Meet to caption in; empty follows Meet's own choice, else the browser language. */
+  captionLanguage: string;
   openRouterApiKey: string;
   model: string;
   /** Let a local agent bridge (quilly-mcp) read sessions over localhost; see agentProtocol.ts. */
@@ -62,7 +67,7 @@ export interface Settings {
   agentBridgePort: number;
 }
 
-/** State of Meet's native captions, which are the transcript source. */
+/** Whether the transcript source is live: Quilly's own caption stream, or Meet's native captions when that is the fallback. */
 export type CaptionsStatus = 'on' | 'off' | 'unavailable';
 
 /** What the content script knows about the Meet tab it lives in. */
@@ -75,7 +80,7 @@ export interface MeetState {
   captions: CaptionsStatus;
 }
 
-/** An entry observed in the Meet DOM; captions are re-sent as their text grows. */
+/** An entry captured in the Meet tab; captions are re-sent as their text grows. */
 export interface CaptionUpsert {
   localId: string;
   kind: EntryKind;
