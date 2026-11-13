@@ -5,6 +5,15 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] – 2026-11-13
+
+### Added
+- Captions are received straight from the call instead of from Meet's caption band. A main-world script sends, on the call's own `captions_v2` data channel, the request Meet's client sends to turn captions on, so nothing in Meet's UI is pressed, shown or hidden: the captions button, the caption band and the video layout stay as the user left them, and the tab no longer has to pretend to be visible. Speakers are named from Meet's participant elements; a speaker Meet has not rendered yet is recorded under a numbered placeholder and renamed once it has.
+- Caption language setting. Automatic follows the language chosen in Meet's captions during the call, otherwise the browser's.
+
+### Changed
+- Switching on Meet's captions and reading them from the page is now the fallback, used when the call was set up before Quilly's hooks existed (a Meet tab open during install or update) or no caption stream starts within 8 seconds. Hiding the caption overlay, the captions-button guard and the background-tab shim apply only in that mode.
+
 ## [0.4.2] – 2026-10-30
 
 ### Fixed
