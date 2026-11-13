@@ -38,8 +38,11 @@ This data never leaves your device through the extension except as described bel
 - **Google favicon service (google.com/s2/favicons)** – the model picker shows provider logos loaded
   from Google's public favicon service. Those requests contain the provider's domain name only
   (for example `anthropic.com`), never your data.
-- **Google Meet (meet.google.com)** – the extension runs on Meet pages to read the captions region,
-  switch captions on, and detect whether you are in a call. It does not send anything to Google.
+- **Google Meet (meet.google.com)** – the extension runs on Meet pages to receive the call's
+  captions and detect whether you are in a call. To receive captions it asks Meet's server for them
+  inside the call's existing connection, with the same request Meet sends when you turn captions on
+  (it names the caption language and nothing else). No transcript or other data of yours is sent to
+  Google by the extension.
 
 ## Local agents (optional)
 
@@ -62,7 +65,7 @@ The extension contains no analytics, tracking, advertising or crash reporting.
 | `sidePanel` | Show the live transcript in Chrome's side panel. |
 | `alarms` | Only while *Local agents* is on: wake the extension every 30 seconds to 2 minutes to look for a paired `quilly-mcp` process on this computer. |
 | `scripting` | Load Quilly into Meet tabs that were already open when it was installed or updated, so recording works without reloading them. Used only on `meet.google.com`. |
-| Host access to `meet.google.com` | Read captions and control the captions button on Meet pages. |
+| Host access to `meet.google.com` | Request and read the call's captions on Meet pages. |
 | Host access to `openrouter.ai` | Call the OpenRouter API on your behalf when you use AI features. |
 
 ## Your control
@@ -75,7 +78,7 @@ The extension contains no analytics, tracking, advertising or crash reporting.
 
 ## Recording consent
 
-Quilly records what Google Meet displays as captions. Depending on where you and the other
+Quilly records the captions Google Meet produces for the call. Depending on where you and the other
 participants are, recording or transcribing a conversation may require their consent. You are
 responsible for complying with the laws and policies that apply to your meetings.
 

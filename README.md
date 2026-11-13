@@ -9,9 +9,9 @@
   <a href="https://gegham-khachatryan.github.io/quilly/privacy"><img src="https://img.shields.io/badge/privacy-local%20only-c026d3" alt="Privacy"></a>
 </p>
 
-**Quilly turns Google Meet's captions into a transcript you own.** It switches on Meet's native
-captions when you join a call, records every line with the speaker's name and a timestamp, keeps
-going while you work in other tabs, and lets you export the result or ask an AI model about it with
+**Quilly turns Google Meet's captions into a transcript you own.** It receives the call's live
+captions when you join, without switching on Meet's caption band, records every line with the
+speaker's name and a timestamp, keeps going while you work in other tabs, and lets you export the result or ask an AI model about it with
 your own OpenRouter key. Everything stays in your browser.
 
 ## Highlights
@@ -24,9 +24,10 @@ your own OpenRouter key. Everything stays in your browser.
 
 ### In detail
 
-- **Auto-start.** Joining a call starts a recording and turns captions on. Captions Quilly switched on are switched off again when it stops. Auto-start can be disabled; `Alt+Shift+R` toggles recording by hand.
-- **Invisible captions.** The caption overlay can be hidden while recording (off by default), and the space it would take is given back to the video grid. Meet's captions button and the `c` key show or hide it instead of cutting the transcript source; the button carries a Quilly badge and dims while the overlay is hidden, so it reads like a native toggle.
-- **Background tabs.** Meet stops rendering captions in a hidden tab. A small main-world shim keeps them flowing while a recording is active and is inert otherwise.
+- **Auto-start.** Joining a call starts a recording. Auto-start can be disabled; `Alt+Shift+R` toggles recording by hand.
+- **Nothing changes in Meet.** Quilly asks Meet's server for captions over the call's own data channel, the way Meet's client does, so the captions button, the caption band and the video layout stay exactly as you left them. Turn Meet's captions on or off for yourself whenever you like; the recording does not depend on it.
+- **Caption language.** Settings picks the language the call is transcribed in. Automatic follows the language chosen in Meet's captions during the call, otherwise the browser's.
+- **Fallback.** A Meet tab that was already open when Quilly was installed or updated has no hooks on its call, so Quilly switches on Meet's captions there and reads them from the page until the tab is reloaded. In that mode the caption overlay can be hidden (Meet's captions button and the `c` key then show or hide it instead of cutting the transcript source), and a main-world shim keeps Meet rendering captions while its tab is hidden.
 - **Hand raises and reactions** are recorded as events in the transcript, exported with it and visible to the AI.
 - **Local agents (MCP).** Off by default. Settings issues a pairing token and the one-line `claude mcp add …` command (plus JSON for other clients). The extension looks for a running `quilly-mcp` on localhost every 30 seconds, easing off to every 2 minutes while none is found, and connects to it; both sides prove they hold the token before anything is exchanged. Agents get `list_sessions`, `get_session`, `search_transcripts` and `wait_for_updates`, which blocks until a live recording gains new captions. Read-only.
 - **Private by design.** Transcripts, chats and settings live in IndexedDB and `chrome.storage.local`. The only outbound traffic is to OpenRouter, when you ask the AI panel a question, to Google's favicon service for provider logos in the model picker, and to a paired `quilly-mcp` on your own machine if you enable local agents. No analytics. [Privacy policy](https://gegham-khachatryan.github.io/quilly/privacy).
@@ -64,22 +65,29 @@ the reload icon on the extension card.
 ```
 src/
   shared/      types, message contracts, settings, IndexedDB repos, OpenRouter client, exports, agent bridge protocol
-  content/     runs on meet.google.com: call detection, captions/events observers, captions-control guard
+  content/     runs on meet.google.com: call detection, caption sources (data channel, Meet's caption band), events observer
   background/  service worker: session lifecycle, persistence, toolbar icon, shortcut, agent bridge client
   sidepanel/   start/stop, auto-start toggle, live transcript of any active recording, recent sessions
   app/         sessions list, session detail (+ AI panel), settings
   ui/          React hooks and components shared by both surfaces
 public/
-  keepalive.js main world: visibility + animation-frame shim while recording
+  captions-channel.js  main world: requests and reads captions on Meet's captions data channel
+  keepalive.js         main world: visibility + animation-frame shim for the caption-band fallback
 packages/
   quilly-mcp/  MCP server (npm package) that local agents run; bundles src/shared/agentProtocol.ts and transcript.ts
 ```
 
 The content script polls call state and reports it to the background. On `inCall` with auto-start
 enabled (or a manual start) the background creates a session and tells the content script to capture.
-The content script clicks the CC button and watches the captions region with a `MutationObserver`;
-each caption block is tracked by DOM element so in-place edits update the same entry. A second
-observer picks up hand-raise toasts and reaction bubbles. Entries are upserted into IndexedDB by the
+`public/captions-channel.js` runs in the page's main world from `document_start` and wraps
+`RTCPeerConnection.createDataChannel` to find the call's `captions_v2` data channel. When asked, it
+sends on that channel the request Meet's own client sends to turn captions on, numbered outside
+Meet's own range; caption frames (device id, utterance id, version, text) come back on the same
+channel and are passed to the content script as DOM events. `src/content/channelCaptions.ts` turns each utterance into one
+entry that updates in place and resolves device ids to names from Meet's participant elements. If
+the server does not acknowledge the request within a few seconds the content script falls back to clicking the CC button and
+watching the captions region with a `MutationObserver`. A second observer picks up hand-raise toasts
+and reaction bubbles. Entries are upserted into IndexedDB by the
 background, which broadcasts changes so open pages refresh live. Active recordings are kept in
 `chrome.storage.session` so they survive the service worker being suspended; on worker start,
 sessions whose tabs are gone are finalized.
@@ -93,8 +101,9 @@ repos, and change broadcasts are forwarded as events so `wait_for_updates` can f
 The bridge's 20-second pings are what keep the worker alive while an agent is attached.
 
 Google changes Meet's class names often. Everything DOM-specific lives in `src/content/meetDom.ts`
-and prefers ARIA attributes and structure over class names. If captures stop after a Meet update, that
-file is the only place to adjust.
+and prefers ARIA attributes and structure over class names; everything about Meet's data-channel
+messages lives in `public/captions-channel.js`. If captures stop after a Meet update, those are the
+two places to adjust.
 
 </details>
 

@@ -16,13 +16,13 @@ Copy for the developer dashboard. Keep in sync with `public/manifest.json`.
 Quilly gives you a written record of every Google Meet call, saved in your browser and yours to keep.
 
 HOW IT WORKS
-Google Meet already shows live captions. Quilly turns them on when you join a call and writes down every line, with who said it and when. No bots join your meeting, and nothing is sent anywhere.
+Google Meet already produces live captions. Quilly receives them when you join a call and writes down every line, with who said it and when. No bots join your meeting, and nothing is sent anywhere.
 
 WHILE YOU ARE IN THE CALL
 • Recording starts on its own when you join. You can turn auto-start off and start or stop by hand from the side panel, or with Alt+Shift+R.
 • Watch the transcript grow in Chrome's side panel as people speak.
 • Switch to other tabs and keep working. Quilly keeps recording in the background.
-• Prefer a clean screen? Hide Meet's captions with the usual captions button or the C key. Quilly keeps recording them.
+• Nothing changes on screen. Quilly does not need Meet's captions switched on, so show or hide them as you like.
 • Hand raises and emoji reactions are noted in the transcript next to what was said.
 
 AFTER THE CALL
@@ -72,7 +72,7 @@ Generate with `npm run store-assets` (renders the SVGs in `store/` with headless
 - `sidePanel` – show the live transcript in Chrome's side panel.
 - `alarms` – while the optional "Local agents" setting is on, wake the service worker every 30 seconds, backing off to every 2 minutes while nothing is found, to look for a paired `quilly-mcp` process on localhost. Unused otherwise.
 - `scripting` – inject the bundled content script into Meet tabs that were open before install/update, so recording works without a page reload. Only targets `https://meet.google.com/*`; no remote code.
-- Host `https://meet.google.com/*` – content script reads the captions region, switches captions on, detects call state.
+- Host `https://meet.google.com/*` – content scripts request and read the call's captions and detect call state.
 - Host `https://openrouter.ai/*` – calls the OpenRouter API with the user's own key when the user uses AI features.
 
 **Remote code**: No. All code ships in the package; no eval, no remote scripts.
