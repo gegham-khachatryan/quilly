@@ -5,6 +5,14 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.1] – 2026-11-26
+
+### Added
+- `quilly-mcp` 0.2.0 is also packed as a Claude Desktop extension, `quilly-mcp-v<version>.mcpb`, attached to each GitHub release. Opening the file installs the server from Claude's own dialog, which asks for the pairing token, so there is no JSON config to edit. The bundle includes its dependencies; its manifest is generated from the server's tool catalogue.
+
+### Fixed
+- `quilly-mcp` treats a blank `QUILLY_PORT` as the default port instead of refusing to start.
+
 ## [0.5.0] – 2026-11-13
 
 ### Added
