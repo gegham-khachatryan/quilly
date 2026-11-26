@@ -15,7 +15,12 @@ this process over localhost and answers each request from its own database.
    claude mcp add quilly -e QUILLY_TOKEN=<token> -- npx -y quilly-mcp
    ```
 
-2. For other clients, add the equivalent to their MCP configuration:
+2. For Claude Desktop, download `quilly-mcp-v<version>.mcpb` from the
+   [latest release](https://github.com/gegham-khachatryan/quilly/releases/latest) and open it, or drag it
+   into Settings → Extensions. Claude shows an install dialog that asks for the pairing token; there is
+   no config file to edit. The bundle carries its own dependencies, so nothing is installed from npm.
+
+3. For other clients, add the equivalent to their MCP configuration:
 
    ```json
    {
@@ -55,6 +60,17 @@ Environment:
 | --- | --- | --- |
 | `QUILLY_TOKEN` | required | Pairing token from Quilly's settings. |
 | `QUILLY_PORT` | `47800` | First port to try; must match the port in Quilly's settings. |
+
+## Building
+
+| Command | Result |
+| --- | --- |
+| `npm run check` | Typecheck, then bundle the CLI into `dist/cli.js` for npm. |
+| `npm run mcpb` | Pack the Claude Desktop bundle into `release/quilly-mcp-v<version>.mcpb` at the repository root. |
+
+The bundle's manifest is generated from `src/manifest.ts`, which takes the tool list from the same
+catalogue the server registers its tools from (`src/catalog.ts`) and the default port from the shared
+protocol module, so neither is written down twice.
 
 ## License
 
