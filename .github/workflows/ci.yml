@@ -23,11 +23,15 @@ jobs:
       - run: npm run package
       - uses: actions/upload-artifact@v4
         with:
-          name: quilly-zip
-          path: release/*.zip
+          name: quilly-release
+          path: |
+            release/*.zip
+            release/*.mcpb
       - name: GitHub release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*.zip
+          files: |
+            release/*.zip
+            release/*.mcpb
           generate_release_notes: true

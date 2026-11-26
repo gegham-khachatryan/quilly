@@ -1,14 +1,15 @@
-// Renders the toolbar icons from their SVG sources with headless Chrome:
+// Renders the icons from their SVG sources with headless Chrome:
 //   public/logo.svg        -> public/icons/icon{16,32,48,128}.png  (brand mark)
+//                          -> packages/quilly-mcp/icon.png         (512px, for the desktop-extension bundle)
 //   scripts/icons/rec.svg  -> public/icons/rec{16,32,48,128}.png   (recording state, swapped in by the background)
 // The PNGs are committed; run `npm run icons` after changing either SVG.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const SIZES = [16, 32, 48, 128];
+const TOOLBAR_SIZES = [16, 32, 48, 128];
 const CHROME_CANDIDATES = [
   process.env.CHROME_BIN,
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -24,9 +25,14 @@ const outDir = join(root, 'public', 'icons');
 mkdirSync(outDir, { recursive: true });
 const work = mkdtempSync(join(tmpdir(), 'quilly-icons-'));
 
+const toolbar = (name) => TOOLBAR_SIZES.map((size) => ({ size, file: join(outDir, `${name}${size}.png`) }));
 const sources = [
-  { name: 'icon', svg: join(root, 'public', 'logo.svg') },
-  { name: 'rec', svg: join(root, 'scripts', 'icons', 'rec.svg') },
+  {
+    svg: join(root, 'public', 'logo.svg'),
+    // The 512px mark stays out of public/ so it is not shipped inside the Chrome extension.
+    outputs: [...toolbar('icon'), { size: 512, file: join(root, 'packages', 'quilly-mcp', 'icon.png') }],
+  },
+  { svg: join(root, 'scripts', 'icons', 'rec.svg'), outputs: toolbar('rec') },
 ];
 
 /** Headless Chrome happily screenshots an XML error page; refuse malformed SVG sources up front. */
@@ -46,12 +52,12 @@ function assertWellFormedSvg(path) {
 }
 
 try {
-  for (const { name, svg } of sources) {
+  for (const { svg, outputs } of sources) {
     assertWellFormedSvg(svg);
     const markup = readFileSync(svg, 'utf8');
-    for (const size of SIZES) {
+    for (const { size, file } of outputs) {
       const sized = markup.replace(/width="\d+" height="\d+"/, `width="${size}" height="${size}"`);
-      const page = join(work, `${name}${size}.html`);
+      const page = join(work, `icon${size}.html`);
       writeFileSync(page, `<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:transparent}svg{display:block}</style></head><body>${sized}</body></html>`);
       execFileSync(
         chrome,
@@ -61,13 +67,13 @@ try {
           '--force-device-scale-factor=1',
           '--default-background-color=00000000',
           `--window-size=${size},${size}`,
-          `--screenshot=${join(outDir, `${name}${size}.png`)}`,
+          `--screenshot=${file}`,
           pathToFileURL(page).href,
         ],
         { stdio: 'ignore' },
       );
     }
-    console.log(`public/icons/${name}{${SIZES.join(',')}}.png`);
+    for (const { file } of outputs) console.log(relative(root, file));
   }
 } finally {
   rmSync(work, { recursive: true, force: true });

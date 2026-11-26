@@ -23,7 +23,7 @@
     "check": "npm run typecheck && npm run build && npm run check -w quilly-mcp",
     "sync-version": "node scripts/sync-version.mjs",
     "version": "npm run sync-version && git add public/manifest.json",
-    "package": "node scripts/package.mjs",
+    "package": "node scripts/package.mjs && npm run mcpb -w quilly-mcp",
     "release": "npm run check && npm run package"
   },
   "dependencies": {

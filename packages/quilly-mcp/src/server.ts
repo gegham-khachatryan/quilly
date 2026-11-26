@@ -5,6 +5,7 @@ import { formatClock } from '../../../src/shared/format';
 import { transcriptToMarkdown, transcriptToText } from '../../../src/shared/transcript';
 import type { Session, TranscriptEntry } from '../../../src/shared/types';
 import type { Bridge } from './bridge';
+import { SERVER_INSTRUCTIONS, TOOLS } from './catalog';
 
 const DEFAULT_LIST_LIMIT = 20;
 const DEFAULT_SEARCH_LIMIT = 50;
@@ -15,25 +16,14 @@ const sessionStatus = z.enum(['recording', 'completed']);
 const transcriptFormat = z.enum(['text', 'markdown', 'json']);
 
 export function createMcpServer(bridge: Bridge, version: string): McpServer {
-  const server = new McpServer(
-    { name: 'quilly', version },
-    {
-      instructions:
-        'Quilly records Google Meet captions into local transcripts. Use list_sessions to find a meeting, get_session to read ' +
-        'its transcript, search_transcripts to find who said what across meetings, and wait_for_updates to follow a meeting ' +
-        'that is still being recorded. Everything is read-only and served live from the Quilly extension in Chrome.',
-    },
-  );
+  const server = new McpServer({ name: 'quilly', version }, { instructions: SERVER_INSTRUCTIONS });
 
   server.server.oninitialized = () => bridge.setAgent(server.server.getClientVersion()?.name ?? null);
 
   server.registerTool(
     'list_sessions',
     {
-      title: 'List recorded meetings',
-      description:
-        'Lists Quilly sessions, newest first. Filter by free text (matched against title, meeting code and participant names), ' +
-        'by an exact participant name, or by status ("recording" for meetings in progress).',
+      ...TOOLS.list_sessions,
       inputSchema: {
         query: z.string().optional().describe('Text to match against title, meeting code and participants'),
         speaker: z.string().optional().describe('Only sessions where this person spoke (exact name as Meet shows it)'),
@@ -50,11 +40,7 @@ export function createMcpServer(bridge: Bridge, version: string): McpServer {
   server.registerTool(
     'get_session',
     {
-      title: 'Read a meeting transcript',
-      description:
-        'Returns a session with its full transcript (captions, hand raises and reactions) in the requested format. ' +
-        'The response ends with a cursor; for a session that is still recording, pass it to wait_for_updates to follow along. ' +
-        'Pass updated_after (a previous cursor) to get only entries added or changed since then.',
+      ...TOOLS.get_session,
       inputSchema: {
         session_id: z.string(),
         format: transcriptFormat.optional().describe('Default "text": one timestamped line per entry'),
@@ -72,11 +58,7 @@ export function createMcpServer(bridge: Bridge, version: string): McpServer {
   server.registerTool(
     'wait_for_updates',
     {
-      title: 'Follow a live recording',
-      description:
-        'Waits until the transcript of a session gains new or changed entries after the given cursor (or until the session ends ' +
-        'or the timeout passes), then returns those entries and a new cursor. Loop on it to follow a meeting as it happens. ' +
-        'A caption keeps its seq while the person is still speaking, so an entry can come back again with longer text.',
+      ...TOOLS.wait_for_updates,
       inputSchema: {
         session_id: z.string(),
         cursor: z.number().int().nonnegative().describe('Cursor from get_session or the previous wait_for_updates'),
@@ -102,8 +84,7 @@ export function createMcpServer(bridge: Bridge, version: string): McpServer {
   server.registerTool(
     'search_transcripts',
     {
-      title: 'Search what was said',
-      description: 'Finds transcript entries containing the text, across all sessions or within one, optionally for a single speaker.',
+      ...TOOLS.search_transcripts,
       inputSchema: {
         query: z.string().min(1),
         session_id: z.string().optional(),
