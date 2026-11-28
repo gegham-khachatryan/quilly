@@ -22,11 +22,6 @@
   "documentationUrl": "https://github.com/gegham-khachatryan/quilly/tree/main/packages/quilly-mcp#readme",
   "supportUrl": "https://github.com/gegham-khachatryan/quilly/issues",
   "privacyPolicyUrl": "https://gegham-khachatryan.github.io/quilly/privacy",
-  "network": {
-    "hosts": [
-      "registry.npmjs.org"
-    ]
-  },
   "userConfig": {
     "token": {
       "type": "string",

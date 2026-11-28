@@ -39,8 +39,6 @@ export function buildPlugin(pkg: PackageInfo) {
     documentationUrl: documentation,
     supportUrl: support,
     privacyPolicyUrl: PRIVACY_POLICY,
-    // What the plugin reaches beyond this computer: npx fetches the server from npm. The server itself only listens on localhost.
-    network: { hosts: ['registry.npmjs.org'] },
     userConfig: USER_CONFIG,
     mcpServers: {
       // The directory only lists a plugin whose package launcher names an exact version.

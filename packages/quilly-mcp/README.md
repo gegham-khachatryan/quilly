@@ -106,7 +106,8 @@ npm publish -w quilly-mcp                              # first: the plugin runs 
 Then commit and push; Claude Code picks the new plugin version up from the repository. The registry
 checks `mcpName` in the published package against the name in `server.json`. The plugin is listed in
 Anthropic's directory by submitting it as a plugin bundle at <https://claude.ai/directory/manage> with
-`plugins/quilly` as the plugin path.
+`plugins/quilly` as the plugin path. The directory accepts a plugin whose MCP server runs on the user's
+computer only from a Verified organization (Submissions → Help and appeals → Request verified).
 
 ## License
 
