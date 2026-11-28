@@ -7,6 +7,7 @@ All notable changes to Quilly are documented here. The format follows
 
 ### Added
 - Claude Code plugin. This repository is a plugin marketplace: `/plugin marketplace add gegham-khachatryan/quilly`, then `/plugin install quilly@quilly`, installs `quilly-mcp` and asks for the pairing token in Claude Code's own dialog, which keeps it in the system's credential store. The plugin lives in `plugins/quilly` and is what Anthropic's plugin directory lists.
+- Settings → Local agents shows the command that installs the plugin with the pairing token filled in, `claude plugin install quilly --marketplace gegham-khachatryan/quilly --config token=…`. The `claude mcp add` command stays available under "Claude Code without the plugin".
 - `quilly-mcp` 0.3.0 declares its entry for the MCP registry (`server.json`, `mcpName`) and marks every tool as read-only, so clients can tell that nothing it does needs confirmation. The plugin, the marketplace file and the registry entry are generated from the server's catalogue, like the desktop-extension manifest, and `npm run check` fails when one is out of date.
 
 ## [0.5.2] – 2026-11-28
