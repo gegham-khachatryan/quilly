@@ -29,7 +29,7 @@ your own OpenRouter key. Everything stays in your browser.
 - **Caption language.** Settings picks the language the call is transcribed in. Automatic follows the language chosen in Meet's captions during the call, otherwise the browser's.
 - **Fallback.** A Meet tab that was already open when Quilly was installed or updated has no hooks on its call, so Quilly switches on Meet's captions there and reads them from the page until the tab is reloaded. In that mode the caption overlay can be hidden (Meet's captions button and the `c` key then show or hide it instead of cutting the transcript source), and a main-world shim keeps Meet rendering captions while its tab is hidden.
 - **Hand raises and reactions** are recorded as events in the transcript, exported with it and visible to the AI.
-- **Local agents (MCP).** Off by default. Settings issues a pairing token and the one-line `claude mcp add …` command (plus JSON for other clients); Claude Desktop installs the `.mcpb` bundle attached to each release, with no config file to edit. The extension looks for a running `quilly-mcp` on localhost every 30 seconds, easing off to every 2 minutes while none is found, and connects to it; both sides prove they hold the token before anything is exchanged. Agents get `list_sessions`, `get_session`, `search_transcripts` and `wait_for_updates`, which blocks until a live recording gains new captions. Read-only.
+- **Local agents (MCP).** Off by default. Settings issues a pairing token and the one-line `claude mcp add …` command (plus JSON for other clients). Claude Code can install it as a plugin instead (`/plugin marketplace add gegham-khachatryan/quilly`, then `/plugin install quilly@quilly`), and Claude Desktop installs the `.mcpb` bundle attached to each release; both ask for the token in their own dialog, with no config file to edit. The extension looks for a running `quilly-mcp` on localhost every 30 seconds, easing off to every 2 minutes while none is found, and connects to it; both sides prove they hold the token before anything is exchanged. Agents get `list_sessions`, `get_session`, `search_transcripts` and `wait_for_updates`, which blocks until a live recording gains new captions. Read-only.
 - **Private by design.** Transcripts, chats and settings live in IndexedDB and `chrome.storage.local`. The only outbound traffic is to OpenRouter, when you ask the AI panel a question, to Google's favicon service for provider logos in the model picker, and to a paired `quilly-mcp` on your own machine if you enable local agents. No analytics. [Privacy policy](https://gegham-khachatryan.github.io/quilly/privacy).
 
 ## Install
@@ -56,6 +56,7 @@ the reload icon on the extension card.
 | `npm run check`           | typecheck then build, for the extension and then `packages/quilly-mcp` |
 | `npm run check -w quilly-mcp` | typecheck and bundle the MCP server into `packages/quilly-mcp/dist/` |
 | `npm run mcpb -w quilly-mcp`  | pack the MCP server as a Claude Desktop extension, `release/quilly-mcp-v<version>.mcpb` |
+| `npm run listings -w quilly-mcp` | regenerate the Claude Code plugin (`plugins/quilly`), `.claude-plugin/marketplace.json` and the MCP registry entry |
 | `npm run icons`           | Re-render `public/icons/*.png` from the SVG sources (headless Chrome) |
 | `npm run screenshots`     | Frame `docs/screenshots/raw/*.png` into store-ready 1280×800 images  |
 | `npm run store-assets`    | Promo tile and marquee PNGs in `store/out/`                          |
@@ -76,6 +77,8 @@ public/
   keepalive.js         main world: visibility + animation-frame shim for the caption-band fallback
 packages/
   quilly-mcp/  MCP server (npm package and Claude Desktop bundle) that local agents run; bundles src/shared/agentProtocol.ts and transcript.ts
+plugins/
+  quilly/      Claude Code plugin that runs quilly-mcp; with .claude-plugin/marketplace.json it makes this repository a plugin marketplace
 ```
 
 The content script polls call state and reports it to the background. On `inCall` with auto-start

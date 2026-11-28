@@ -8,19 +8,29 @@ this process over localhost and answers each request from its own database.
 
 ## Setup
 
-1. In Chrome open Quilly → Settings → **Local agents**, switch on *Allow local agents to read
-   transcripts* and copy the setup command shown there. It looks like this:
+1. In Chrome open Quilly → Settings → **Local agents** and switch on *Allow local agents to read
+   transcripts*. The page shows the pairing token and a setup command.
+
+2. For Claude Code, install the plugin from a session. Claude Code asks for the pairing token and
+   keeps it in the system's credential store:
+
+   ```
+   /plugin marketplace add gegham-khachatryan/quilly
+   /plugin install quilly@quilly
+   ```
+
+   Or register the server yourself with the command Quilly shows, which looks like this:
 
    ```sh
    claude mcp add quilly -e QUILLY_TOKEN=<token> -- npx -y quilly-mcp
    ```
 
-2. For Claude Desktop, download `quilly-mcp-v<version>.mcpb` from the
+3. For Claude Desktop, download `quilly-mcp-v<version>.mcpb` from the
    [latest release](https://github.com/gegham-khachatryan/quilly/releases/latest) and open it, or drag it
    into Settings → Extensions. Claude shows an install dialog that asks for the pairing token; there is
    no config file to edit. The bundle carries its own dependencies, so nothing is installed from npm.
 
-3. For other clients, add the equivalent to their MCP configuration:
+4. For other clients, add the equivalent to their MCP configuration:
 
    ```json
    {
@@ -67,10 +77,36 @@ Environment:
 | --- | --- |
 | `npm run check` | Typecheck, then bundle the CLI into `dist/cli.js` for npm. |
 | `npm run mcpb` | Pack the Claude Desktop bundle into `release/quilly-mcp-v<version>.mcpb` at the repository root. |
+| `npm run listings` | Write the Claude Code plugin, the marketplace file and the MCP registry entry. |
 
-The bundle's manifest is generated from `src/manifest.ts`, which takes the tool list from the same
-catalogue the server registers its tools from (`src/catalog.ts`) and the default port from the shared
-protocol module, so neither is written down twice.
+The bundle's manifest is generated from `src/manifest.ts`, which takes the tool list and the install
+settings from the same catalogue the server registers its tools from (`src/catalog.ts`) and the
+default port from the shared protocol module, so neither is written down twice.
+
+## Listings
+
+Three committed files list the server where people look for one. `src/listings.ts` builds them from
+`package.json` and the catalogue, and `npm run check` fails when one is out of date.
+
+| File | Read by |
+| --- | --- |
+| `plugins/quilly/.claude-plugin/plugin.json` | Claude Code, and Anthropic's plugin directory. It starts `quilly-mcp` at the exact version of this package and asks for the pairing token on install. |
+| `.claude-plugin/marketplace.json` | `claude plugin marketplace add gegham-khachatryan/quilly`, which offers the plugin above. |
+| `packages/quilly-mcp/server.json` | The [MCP registry](https://registry.modelcontextprotocol.io), through `mcp-publisher`. |
+
+To release a version of the server:
+
+```sh
+npm version minor -w quilly-mcp --no-git-tag-version   # or patch
+npm run listings -w quilly-mcp                         # the plugin and the registry entry name the version
+npm publish -w quilly-mcp                              # first: the plugin runs this version from npm
+(cd packages/quilly-mcp && mcp-publisher login github && mcp-publisher publish)
+```
+
+Then commit and push; Claude Code picks the new plugin version up from the repository. The registry
+checks `mcpName` in the published package against the name in `server.json`. The plugin is listed in
+Anthropic's directory by submitting it as a plugin bundle at <https://claude.ai/directory/manage> with
+`plugins/quilly` as the plugin path.
 
 ## License
 

@@ -1,0 +1,16 @@
+{
+  "name": "quilly",
+  "description": "Quilly for Claude Code: read the Google Meet transcripts Quilly records.",
+  "owner": {
+    "name": "Gegham Khachatryan",
+    "url": "https://github.com/gegham-khachatryan"
+  },
+  "plugins": [
+    {
+      "name": "quilly",
+      "source": "./plugins/quilly",
+      "description": "Read Google Meet transcripts recorded by the Quilly Chrome extension, including the live meeting.",
+      "category": "productivity"
+    }
+  ]
+}

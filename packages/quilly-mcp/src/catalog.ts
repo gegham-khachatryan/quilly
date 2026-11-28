@@ -1,6 +1,11 @@
 // What the server offers and what it is configured with, as data: the CLI and the
-// MCP server read it at run time and the desktop-extension manifest is generated
-// from it, so a client's install dialog and the running server cannot disagree.
+// MCP server read it at run time, and the desktop-extension manifest, the Claude
+// Code plugin and the MCP registry entry are generated from it, so a client's
+// install dialog, a directory listing and the running server cannot disagree.
+import { AGENT_BRIDGE_DEFAULT_PORT } from '../../../src/shared/agentProtocol';
+
+/** One-line description for listings. The MCP registry accepts at most 100 characters. */
+export const SUMMARY = 'Read Google Meet transcripts recorded by the Quilly Chrome extension, including the live meeting.';
 
 /** Environment variables the CLI is configured through. */
 export const ENV = { token: 'QUILLY_TOKEN', port: 'QUILLY_PORT' } as const;
@@ -8,13 +13,40 @@ export const ENV = { token: 'QUILLY_TOKEN', port: 'QUILLY_PORT' } as const;
 /** Ports the bridge may listen on: unprivileged ones. */
 export const PORT_RANGE = { min: 1024, max: 65535 } as const;
 
+/**
+ * The settings a client asks the user for at install time. Claude Desktop (`user_config` in the
+ * MCPB manifest) and Claude Code (`userConfig` in the plugin manifest) take this same shape and
+ * both substitute `${user_config.<key>}` into the server's environment.
+ */
+export const USER_CONFIG = {
+  token: {
+    type: 'string',
+    title: 'Pairing token',
+    description: 'Shown in Chrome under Quilly → Settings → Local agents.',
+    sensitive: true,
+    required: true,
+  },
+  port: {
+    type: 'number',
+    title: 'Port',
+    description: 'First localhost port to try. Change it only if you changed the port in Quilly’s settings.',
+    default: AGENT_BRIDGE_DEFAULT_PORT,
+    min: PORT_RANGE.min,
+    max: PORT_RANGE.max,
+    required: false,
+  },
+} as const;
+
+/** The server's environment as a client fills it from USER_CONFIG. */
+export const USER_CONFIG_ENV = { [ENV.token]: '${user_config.token}', [ENV.port]: '${user_config.port}' };
+
+/** Every tool reads from the user's own transcripts and changes nothing: no side effects, no outside world. */
+const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;
+
 export const SERVER_INSTRUCTIONS =
   'Quilly records Google Meet captions into local transcripts. Use list_sessions to find a meeting, get_session to read ' +
   'its transcript, search_transcripts to find who said what across meetings, and wait_for_updates to follow a meeting ' +
   'that is still being recorded. Everything is read-only and served live from the Quilly extension in Chrome.';
-
-/** Every tool reads from the user's own transcripts and changes nothing: no side effects, no outside world. */
-const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;
 
 export const TOOLS = {
   list_sessions: {

@@ -1,0 +1,61 @@
+{
+  "name": "quilly",
+  "displayName": "Quilly",
+  "version": "0.3.0",
+  "description": "Read Google Meet transcripts recorded by the Quilly Chrome extension, including the live meeting.",
+  "author": {
+    "name": "Gegham Khachatryan",
+    "url": "https://github.com/gegham-khachatryan"
+  },
+  "homepage": "https://github.com/gegham-khachatryan/quilly",
+  "repository": "https://github.com/gegham-khachatryan/quilly",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-meet",
+    "transcript",
+    "claude-code",
+    "quilly"
+  ],
+  "icon": "./icon.png",
+  "documentationUrl": "https://github.com/gegham-khachatryan/quilly/tree/main/packages/quilly-mcp#readme",
+  "supportUrl": "https://github.com/gegham-khachatryan/quilly/issues",
+  "privacyPolicyUrl": "https://gegham-khachatryan.github.io/quilly/privacy",
+  "network": {
+    "hosts": [
+      "registry.npmjs.org"
+    ]
+  },
+  "userConfig": {
+    "token": {
+      "type": "string",
+      "title": "Pairing token",
+      "description": "Shown in Chrome under Quilly → Settings → Local agents.",
+      "sensitive": true,
+      "required": true
+    },
+    "port": {
+      "type": "number",
+      "title": "Port",
+      "description": "First localhost port to try. Change it only if you changed the port in Quilly’s settings.",
+      "default": 47800,
+      "min": 1024,
+      "max": 65535,
+      "required": false
+    }
+  },
+  "mcpServers": {
+    "quilly": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "quilly-mcp@0.3.0"
+      ],
+      "env": {
+        "QUILLY_TOKEN": "${user_config.token}",
+        "QUILLY_PORT": "${user_config.port}"
+      }
+    }
+  }
+}

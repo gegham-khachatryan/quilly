@@ -9,26 +9,14 @@ import { packExtension } from '@anthropic-ai/mcpb';
 import { build } from 'esbuild';
 import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { cliOptions, packageDir, pkg } from './esbuild.config.mjs';
+import { cliOptions, importTs, packageDir, pkg } from './esbuild.config.mjs';
 
 const root = resolve(packageDir, '..', '..');
 const releaseDir = join(root, 'release');
 const stage = join(releaseDir, 'mcpb-stage');
 const output = join(releaseDir, `${pkg.name}-v${pkg.version}.mcpb`);
 
-// src/manifest.ts is TypeScript that imports the shared protocol constants, so it is bundled in memory and imported.
-const { outputFiles } = await build({
-  absWorkingDir: packageDir,
-  entryPoints: ['src/manifest.ts'],
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  write: false,
-  logLevel: 'silent',
-});
-const { buildManifest, SERVER_ENTRY, ICON } = await import(
-  `data:text/javascript;base64,${Buffer.from(outputFiles[0].contents).toString('base64')}`
-);
+const { buildManifest, SERVER_ENTRY, ICON } = await importTs('src/manifest.ts');
 
 rmSync(stage, { recursive: true, force: true });
 mkdirSync(stage, { recursive: true });

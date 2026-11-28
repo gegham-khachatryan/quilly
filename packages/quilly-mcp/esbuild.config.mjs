@@ -2,6 +2,7 @@
 // package (build.mjs) and the desktop-extension bundle (mcpb.mjs). Both inline the
 // extension's shared protocol and transcript modules (imported relatively from
 // ../../src/shared) so each artefact carries one copy of the contract.
+import { build } from 'esbuild';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -18,3 +19,20 @@ export const cliOptions = {
   define: { __QUILLY_MCP_VERSION__: JSON.stringify(pkg.version) },
   logLevel: 'info',
 };
+
+/**
+ * Imports a TypeScript module of this package into a build script. The module imports the
+ * shared protocol constants, so it is bundled in memory first.
+ */
+export async function importTs(entry) {
+  const { outputFiles } = await build({
+    absWorkingDir: packageDir,
+    entryPoints: [entry],
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    write: false,
+    logLevel: 'silent',
+  });
+  return import(`data:text/javascript;base64,${Buffer.from(outputFiles[0].contents).toString('base64')}`);
+}
