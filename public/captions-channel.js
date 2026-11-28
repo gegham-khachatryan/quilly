@@ -206,7 +206,14 @@
   const nativeCreate = RTCPeerConnection.prototype.createDataChannel;
   const nativeSend = RTCDataChannel.prototype.send;
 
-  /** captions_v2 channels created under the hook; a call has one, a reconnect may bring another. */
+  /**
+   * captions_v2 channels created under the hook, in order of preference. A call
+   * starts with one, but more can be open at the same time: every connection the
+   * page makes to the call has its own (a second one while presenting, a new one
+   * on a reconnect), and the server answers a request on each of them with a
+   * caption stream of its own. So exactly one channel carries our request, and
+   * only its frames are passed on (see `preferredChannel`).
+   */
   const channels = new Set();
   const lastActivity = new WeakMap(); // channel -> when it opened or Meet last sent a request on it
   /** channel -> language of Meet's own latest request, null after "off" (or before any): what the user has in Meet. */
@@ -231,10 +238,16 @@
   const report = () =>
     post({ type: 'status', version: PROTOCOL_VERSION, streaming: own !== null && own.acked && own.channel.readyState === 'open' });
 
-  function activeChannel() {
-    let active = null;
-    for (const channel of channels) if (channel.readyState === 'open') active = channel;
-    return active;
+  /**
+   * The channel our request belongs on: the one that already carries it for as
+   * long as it stays open, otherwise the first open one. A channel that opens
+   * later never takes the request over from one that works, which would leave
+   * captions requested on both.
+   */
+  function preferredChannel() {
+    if (own && own.channel.readyState === 'open') return own.channel;
+    for (const channel of channels) if (channel.readyState === 'open') return channel;
+    return null;
   }
 
   function send(channel, language) {
@@ -256,8 +269,8 @@
       release();
       return;
     }
-    const channel = activeChannel();
-    if (own && own.channel !== channel) forget();
+    const channel = preferredChannel();
+    if (own && own.channel !== channel) forget(); // its channel closed
     if (channel && failures < MAX_FAILURES) {
       const quietFor = performance.now() - (lastActivity.get(channel) ?? 0);
       const language = wanted.language || meetCaptions.get(channel) || meetLanguage || wanted.fallbackLanguage || DEFAULT_LANGUAGE;
@@ -286,6 +299,9 @@
       failures++;
       log(`no acknowledgement (attempt ${failures} of ${MAX_FAILURES})`);
       own = null;
+      // Back of the line: if another channel is open, the next attempt goes to it.
+      channels.delete(channel);
+      channels.add(channel);
       sync();
     }, ACK_TIMEOUT_MS);
   }
@@ -324,7 +340,8 @@
       report();
       return;
     }
-    if (!wanted) return;
+    // Frames on any other channel answer a request that is not ours (Meet's own, on another connection).
+    if (!wanted || !own || own.channel !== channel) return;
     const caption = readCaption(bytes);
     if (!caption) return;
     if (framesSeen++ === 0) log('first caption frame received');
@@ -397,7 +414,7 @@
     if (request.action === 'start') {
       wanted = { language: String(request.language || ''), fallbackLanguage: String(request.fallbackLanguage || '') };
       failures = 0;
-      if (!activeChannel()) log(channels.size ? 'waiting for the captions channel to open' : 'no captions channel seen; the call was set up before this script loaded, or Meet has not connected yet');
+      if (!preferredChannel()) log(channels.size ? 'waiting for the captions channel to open' : 'no captions channel seen; the call was set up before this script loaded, or Meet has not connected yet');
       sync();
     } else if (request.action === 'stop') {
       wanted = null;
