@@ -5,6 +5,11 @@ All notable changes to Quilly are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.2] – 2026-11-28
+
+### Fixed
+- Captions are no longer recorded twice while more than one connection to the call is open, as when presenting. Each connection has its own `captions_v2` channel; Quilly moved its request to the newest one without leaving the first, and recorded the caption stream of both. The request now stays on the channel that carries it until that channel closes, and only that channel's frames are recorded.
+
 ## [0.5.1] – 2026-11-26
 
 ### Added
