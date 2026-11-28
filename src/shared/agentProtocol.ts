@@ -132,6 +132,25 @@ export function parseFrame<T>(raw: unknown): T | null {
   }
 }
 
+/**
+ * The Claude Code plugin that runs the MCP server: its name, the marketplace that offers it, the
+ * GitHub repository that marketplace is read from, and the install options it asks the user for.
+ * The plugin and marketplace manifests are generated from these (packages/quilly-mcp/src/listings.ts).
+ */
+export const AGENT_PLUGIN = {
+  name: 'quilly',
+  marketplace: 'quilly',
+  repository: 'gegham-khachatryan/quilly',
+  options: { token: 'token', port: 'port' },
+} as const;
+
+/** Installs the Claude Code plugin with the pairing token already filled in; shown in Settings. */
+export function agentPluginCommand(token: string, port: number): string {
+  const { name, repository, options } = AGENT_PLUGIN;
+  const config = port === AGENT_BRIDGE_DEFAULT_PORT ? `--config ${options.token}=${token}` : `--config ${options.token}=${token} --config ${options.port}=${port}`;
+  return `claude plugin install ${name} --marketplace ${repository} ${config}`;
+}
+
 /** How the MCP server for a given client is registered; shown in Settings and the README. */
 export function agentSetupCommand(token: string, port: number): string {
   const env = port === AGENT_BRIDGE_DEFAULT_PORT ? `-e QUILLY_TOKEN=${token}` : `-e QUILLY_TOKEN=${token} -e QUILLY_PORT=${port}`;

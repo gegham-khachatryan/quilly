@@ -2,7 +2,7 @@
 // MCP server read it at run time, and the desktop-extension manifest, the Claude
 // Code plugin and the MCP registry entry are generated from it, so a client's
 // install dialog, a directory listing and the running server cannot disagree.
-import { AGENT_BRIDGE_DEFAULT_PORT } from '../../../src/shared/agentProtocol';
+import { AGENT_BRIDGE_DEFAULT_PORT, AGENT_PLUGIN } from '../../../src/shared/agentProtocol';
 
 /** One-line description for listings. The MCP registry accepts at most 100 characters. */
 export const SUMMARY = 'Read Google Meet transcripts recorded by the Quilly Chrome extension, including the live meeting.';
@@ -16,17 +16,20 @@ export const PORT_RANGE = { min: 1024, max: 65535 } as const;
 /**
  * The settings a client asks the user for at install time. Claude Desktop (`user_config` in the
  * MCPB manifest) and Claude Code (`userConfig` in the plugin manifest) take this same shape and
- * both substitute `${user_config.<key>}` into the server's environment.
+ * both substitute `${user_config.<key>}` into the server's environment. The keys are the ones the
+ * extension's settings page puts in the plugin install command.
  */
+const OPTION = AGENT_PLUGIN.options;
+
 export const USER_CONFIG = {
-  token: {
+  [OPTION.token]: {
     type: 'string',
     title: 'Pairing token',
     description: 'Shown in Chrome under Quilly → Settings → Local agents.',
     sensitive: true,
     required: true,
   },
-  port: {
+  [OPTION.port]: {
     type: 'number',
     title: 'Port',
     description: 'First localhost port to try. Change it only if you changed the port in Quilly’s settings.',
@@ -38,7 +41,7 @@ export const USER_CONFIG = {
 } as const;
 
 /** The server's environment as a client fills it from USER_CONFIG. */
-export const USER_CONFIG_ENV = { [ENV.token]: '${user_config.token}', [ENV.port]: '${user_config.port}' };
+export const USER_CONFIG_ENV = { [ENV.token]: `\${user_config.${OPTION.token}}`, [ENV.port]: `\${user_config.${OPTION.port}}` };
 
 /** Every tool reads from the user's own transcripts and changes nothing: no side effects, no outside world. */
 const READ_ONLY = { readOnlyHint: true, openWorldHint: false } as const;

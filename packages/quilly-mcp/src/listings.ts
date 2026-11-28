@@ -7,11 +7,12 @@
 //
 // Unlike the desktop-extension manifest they are committed, because Claude Code and
 // the directory read them from the repository.
+import { AGENT_PLUGIN } from '../../../src/shared/agentProtocol';
 import { ENV, SUMMARY, USER_CONFIG, USER_CONFIG_ENV } from './catalog';
 import { ICON, links, type PackageInfo } from './manifest';
 
-/** Name of the plugin, of the marketplace that offers it and of the server inside it. */
-export const PLUGIN_NAME = 'quilly';
+/** Name of the plugin and of the server inside it. */
+const PLUGIN_NAME = AGENT_PLUGIN.name;
 /** The plugin's folder, relative to the repository root. */
 export const PLUGIN_DIR = `plugins/${PLUGIN_NAME}`;
 /** Path of the icon inside the plugin's folder. */
@@ -48,8 +49,12 @@ export function buildPlugin(pkg: PackageInfo) {
 }
 
 export function buildMarketplace(pkg: PackageInfo) {
+  // The settings page tells people to install from this repository, so it has to be the one the marketplace file is in.
+  if (!pkg.repository.url.endsWith(`github.com/${AGENT_PLUGIN.repository}`)) {
+    throw new Error(`AGENT_PLUGIN.repository is ${AGENT_PLUGIN.repository}, but package.json points at ${pkg.repository.url}.`);
+  }
   return {
-    name: PLUGIN_NAME,
+    name: AGENT_PLUGIN.marketplace,
     description: 'Quilly for Claude Code: read the Google Meet transcripts Quilly records.',
     owner: links(pkg).author,
     // No version here: the plugin manifest's version is the one Claude Code installs by.

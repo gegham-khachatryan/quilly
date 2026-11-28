@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AGENT_BRIDGE_DEFAULT_PORT, agentSetupCommand, agentSetupJson, newPairingToken } from '../../shared/agentProtocol';
+import { AGENT_BRIDGE_DEFAULT_PORT, agentPluginCommand, agentSetupCommand, agentSetupJson, newPairingToken } from '../../shared/agentProtocol';
 import type { Settings } from '../../shared/types';
 import { Toggle } from '../../ui/components';
 import { useAgentBridgeStatus } from '../../ui/hooks';
@@ -69,9 +69,17 @@ export function AgentBridgeSettings({ settings, update }: { settings: Settings; 
             </div>
           </label>
           <div className="space-y-2">
-            <span className="block text-xs text-muted">Claude Code: run once in a terminal, then start a new Claude Code session.</span>
-            <Snippet text={agentSetupCommand(token, port)} />
+            <span className="block text-xs text-muted">
+              Claude Code: run once in a terminal, then start a new Claude Code session. This installs the Quilly plugin, which keeps the token in
+              your system’s credential store.
+            </span>
+            <Snippet text={agentPluginCommand(token, port)} />
           </div>
+          <details className="space-y-2">
+            <summary className="cursor-pointer text-xs text-muted">Claude Code without the plugin</summary>
+            <p className="pt-2 text-xs text-muted">Registers the server directly instead. Use one or the other, not both.</p>
+            <Snippet text={agentSetupCommand(token, port)} />
+          </details>
           <details className="space-y-2">
             <summary className="cursor-pointer text-xs text-muted">Other MCP clients (Cursor, Codex, Claude Desktop…)</summary>
             <p className="pt-2 text-xs text-muted">Add this to the client’s MCP configuration. Node.js 20 or newer must be installed.</p>
